@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["http://localhost:8081", "https://cuddles-59853.firebaseapp.com", "https://cuddles-59853.web.app"],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]
