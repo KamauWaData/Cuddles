@@ -1,13 +1,69 @@
-// src/components/SwipeCard.tsx
-import { View, Text, Image } from 'react-native';
+import React from 'react'
+import { Image, Text, View } from 'react-native'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedGestureHandler,
+  withSpring,
+} from 'react-native-reanimated'
 
-export default function SwipeCard({ name, age, image }: { name: string, age: number, image: string }) {
-  return (
-    <View className="bg-white rounded-xl overflow-hidden shadow-md">
-      <Image source={{ uri: image }} className="w-full h-96" />
-      <View className="p-4">
-        <Text className="text-xl font-bold">{name}, {age}</Text>
-      </View>
-    </View>
-  );
+import { PanGestureHandler } from 'react-native-gesture-handler'
+import Icon from 'react-native-vector-icons/Ionicons'
+
+export default function   SwipeCard() {
+  const translateX = userSharedValue(0)
+  const rotate = useSharedvalue(0)
+
+  const gestureHandler = useAnimatedGestureHandler({
+    onActive: (event) => {
+      translateX.value = event.translationX
+      rotate.value = event.translationX / 20
+    },
+    onEnd: () => {
+      if (Math.abs(translateX.value) > 120 ) {
+        onSwipe(translateX.value > 0 ? 'right' : 'left')
+        translateX.value = withSpring(translateX.value > 0 ? 500 : -500)
+      } else {
+        translateX.value = withSpring(0)
+        rotate.value = withSpring(0)
+      }
+    },
+  })
+
+const animatedStyle = useAnimatedStyle(() => ({
+  transform: [
+    { translateX: translateX.value },
+    { rotate: `${rotate.value}deg` },
+  ]
+}))
+
+return (
+  <PanGestureHandler onGestureEvent={gestureHandler}>
+      <Animated.View
+        className="absolute w-[90%] self-center rounded-3xl overflow-hidden bg-gray-200"
+        style={animatedStyle}
+      >
+        <Image source={{ uri: user.image }} className="w-full h-[500px]" />
+        <View className="absolute left-3 top-3 bg-black/40 px-3 py-1 rounded-full">
+          <Text className="text-white text-sm">{user.distance} km away</Text>
+        </View>
+
+        <View className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
+          <Text className="text-white text-2xl font-semibold">
+            {user.name}, {user.age}
+          </Text>
+          <Text className="text-gray-200">{user.location}</Text>
+          <View className="flex-row space-x-3 mt-2">
+            <Icon name="logo-instagram" size={20} color="white" />
+            <Icon name="logo-twitter" size={20} color="white" />
+          </View>
+        </View>
+      </Animated.View>
+    </PanGestureHandler>
+)
+}
+
+function onSwipe(direction: 'left' | 'right') {
+  // Handle swipe action (e.g., update state, make API call)
+  console.log(`Swiped ${direction}`);
 }

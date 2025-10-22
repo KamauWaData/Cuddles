@@ -5,8 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/navigation';
 import { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { supabase } from '../supabase/supabaseClient';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -24,16 +23,50 @@ export default function Login() {
 
     try {
       if (isPhone) {
-        const userCredential = await signInWithEmailAndPassword(auth, input, password);
-        const user = userCredential.user;
-        // Check profileComplete
-        // Navigate based on that
-        Alert.alert('Login Sucessful');
+        const { data, error } = await supabase.auth.signInWithOtp({ phone: input });
+        if (error) {
+          console.log(error);
+          Alert.alert('Login failed', error.message);
+          return;
+        }
+        Alert.alert('OTP Sent', 'Check your phone for the login code');
+        return;
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: input,
+          password,
+        });
+        if (error) {
+          console.log(error);
+          Alert.alert('Login failed', error.message);
+          return;
+        }
+        const user = data.user;
+        if (!user) {
+          Alert.alert('Login failed', 'No user returned');
+          return;
+        }
+
+        // Check user's profile row to decide next screen
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError || !profile) {
+          // No profile yet — go complete profile
+          navigation.navigate('ProfileName', { uid: user.id });
+        } else if (profile.profileComplete) {
+          navigation.replace('Home');
+        } else {
+          navigation.navigate('ProfileName', { uid: user.id });
+        }
       }
 
-    }catch (err: any) {
+    } catch (err: any) {
       console.log(err);
-      Alert.alert('Login failed', err.message);
+      Alert.alert('Login failed', err.message || 'Unknown error');
     }
     
   };

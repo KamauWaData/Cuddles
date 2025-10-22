@@ -8,21 +8,17 @@ import * as FileSystem from 'expo-file-system';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/navigation';
-import { getAuth } from 'firebase/auth';
-import { File } from 'expo-file-system';
-import { updateDoc, doc,  getFirestore, setDoc } from 'firebase/firestore';
-import { app } from '../firebase/config';
+// Use your supabase client instance (adjust the path if your client file is elsewhere)
+import { supabase } from '../supabase/supabaseClient';
 
 type ProfileNameScreenRouteProp = RouteProp<RootStackParamList, 'Gender'>;
 type ProfileNameScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProfileName'>;
 
-const db = getFirestore(app);
-const auth = getAuth(app);
-
 export default function ProfileName() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ProfileName'>>();
   const route = useRoute();
-  const { uid } = route.params as RootStackParamList['ProfileName'];
+  const params = route.params as RootStackParamList['ProfileName'] | undefined;
+  const uidFromParams = params?.uid;
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -105,16 +101,38 @@ export default function ProfileName() {
         }
 
         try {
-          await setDoc(doc(db, 'users', uid), {
-            firstName,
-            lastName,
-            birthday: birthdate,
-            avatar,
-            profileComplete: false, // still need gender/interests step
-          });
+          // Resolve uid: prefer route param then supabase auth user
+          let resolvedUid = uidFromParams;
+          if (!resolvedUid) {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError || !userData?.user) {
+              console.error('Supabase auth error', userError);
+              Alert.alert('Authentication error. Please sign in again.');
+              return;
+            }
+            resolvedUid = userData.user.id;
+          }
+
+          // Upsert profile into 'users' table (adjust table name/columns if different)
+          const { data, error } = await supabase
+            .from('users')
+            .upsert([{
+              id: resolvedUid,
+              firstName,
+              lastName,
+              birthday: birthdate.toISOString().split('T')[0],
+              avatar,
+              profileComplete: false,
+            }]);
+
+          if (error) {
+            console.error('Supabase upsert error', error);
+            Alert.alert('Error saving profile.');
+            return;
+          }
 
           navigation.navigate('Gender', {
-            uid,
+            uid: resolvedUid,
             profile: {
               firstName,
               lastName,

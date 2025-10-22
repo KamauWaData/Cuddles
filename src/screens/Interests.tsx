@@ -4,8 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/navigation';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { supabase } from '../supabase/supabaseClient';
 
 type InterestsNavProp = NativeStackNavigationProp<RootStackParamList, 'Interests'>;
 type InterestsRouteProp = RouteProp<RootStackParamList, 'Interests'>;
@@ -39,13 +38,20 @@ export default function Interests() {
     const userProfile = {
         ...profile,
         interests: selected,
-        profileCompleted: true,
+        profileComplete: true,
         createdAt: new Date().toISOString(),
 
     };
 
     try {
-        await setDoc(doc(db, 'users', uid), userProfile);
+        const { data, error } = await supabase
+          .from('users')
+          .upsert({ id: uid, ...userProfile });
+        if (error) {
+          console.log('Error Saving profile:', error);
+          Alert.alert('Error saving profile. Please try again.');
+          return;
+        }
         Alert.alert('Profile completed successfully!');
         navigation.replace('Home');
     } catch (err) {

@@ -5,8 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/navigation';
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
-
+import { supabase } from '../supabase/supabaseClient';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 export default function Register() {
@@ -18,8 +17,6 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const auth = getAuth();
-
   const handleSubmit = async () => {
     if (password !== confirmPassword) {
       alert('Passwords do not match');
@@ -27,21 +24,29 @@ export default function Register() {
     }
 
     try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const uid = user.uid;
-
-    navigation.navigate("ProfileName", {
-      uid,
-      phoneNumber,
-      name,
-      password,
-      email,
-    });
-  } catch (error: any) {
-    alert(error.message);
-  }
-};
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, phoneNumber },
+        },
+      });
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      const uid = data?.user?.id;
+      navigation.navigate('ProfileName', {
+        uid,
+        phoneNumber,
+        name,
+        password,
+        email,
+      });
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
 
   return (
     <View className="flex-1 bg-white px-6 pt-20">
