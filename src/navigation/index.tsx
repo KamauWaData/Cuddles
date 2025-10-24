@@ -25,6 +25,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Gender" component={Gender} />
         <Stack.Screen name="Interests" component={Interests} />
         <Stack.Screen name="Home" component={Home} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

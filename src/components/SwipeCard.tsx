@@ -3,23 +3,23 @@ import { Image, Text, View } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedGestureHandler,
+  runOnJS,
   withSpring,
 } from 'react-native-reanimated'
 
-import { PanGestureHandler } from 'react-native-gesture-handler'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Icon from 'react-native-vector-icons/Ionicons'
 
-export default function   SwipeCard() {
-  const translateX = userSharedValue(0)
-  const rotate = useSharedvalue(0)
+export default function   SwipeCard({ user, onSwipe}) {
+  const translateX = useSharedValue(0)
+  const rotate = useSharedValue(0)
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onActive: (event) => {
+  const pan = Gesture.Pan()
+    .onUpdate ((event) => {
       translateX.value = event.translationX
       rotate.value = event.translationX / 20
-    },
-    onEnd: () => {
+    })
+    .onEnd(() => {
       if (Math.abs(translateX.value) > 120 ) {
         onSwipe(translateX.value > 0 ? 'right' : 'left')
         translateX.value = withSpring(translateX.value > 0 ? 500 : -500)
@@ -27,8 +27,8 @@ export default function   SwipeCard() {
         translateX.value = withSpring(0)
         rotate.value = withSpring(0)
       }
-    },
-  })
+    })
+
 
 const animatedStyle = useAnimatedStyle(() => ({
   transform: [
@@ -38,7 +38,7 @@ const animatedStyle = useAnimatedStyle(() => ({
 }))
 
 return (
-  <PanGestureHandler onGestureEvent={gestureHandler}>
+  <GestureDetector gesture={pan}>
       <Animated.View
         className="absolute w-[90%] self-center rounded-3xl overflow-hidden bg-gray-200"
         style={animatedStyle}
@@ -59,7 +59,7 @@ return (
           </View>
         </View>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
 )
 }
 

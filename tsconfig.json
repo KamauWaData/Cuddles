@@ -20,6 +20,6 @@
     "src",
     "App.tsx",
     "nativewind-env.d.ts"
-  ],
+, "src/screens", "(auth)/OTP.tsx"  ],
   "extends": "expo/tsconfig.base"
 }
