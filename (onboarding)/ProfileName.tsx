@@ -7,9 +7,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/navigation';
+import { RootStackParamList } from '../src/navigation/navigation';
 // Use your supabase client instance (adjust the path if your client file is elsewhere)
-import { supabase } from '../supabase/supabaseClient';
+import { supabase } from '../src/supabase/supabaseClient';
 
 type ProfileNameScreenRouteProp = RouteProp<RootStackParamList, 'Gender'>;
 type ProfileNameScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProfileName'>;

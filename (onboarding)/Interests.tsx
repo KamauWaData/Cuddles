@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/navigation';
-import { supabase } from '../supabase/supabaseClient';
+import { RootStackParamList } from '../src/navigation/navigation';
+import { supabase } from '../src/supabase/supabaseClient';
 
 type InterestsNavProp = NativeStackNavigationProp<RootStackParamList, 'Interests'>;
 type InterestsRouteProp = RouteProp<RootStackParamList, 'Interests'>;

@@ -1,13 +1,13 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootStackParamList } from './navigation';
+import { RootStackParamList } from './src/navigation/navigation';
 
 import Onboarding from '../screens/Onboarding';
 import Register from '../screens/Register';
 
-import ProfileName from '../screens/ProfileName';
-import Gender from '../screens/Gender';         // <-- Import Gender screen
-import Interests from '../screens/Interests';   // <-- Import Interests screen
+import ProfileName from './(onboarding)/ProfileName';
+import Gender from './(onboarding)/Gender';         // <-- Import Gender screen
+import Interests from './(onboarding)/Interests';   // <-- Import Interests screen
 import Home from '../screens/Home';
 import Login from '../screens/Login';
 
