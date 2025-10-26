@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { supabase } from '../supabase/supabaseClient'
+import { supabase } from '../../lib/supabase'
+import { router } from 'expo-router'
 
-export default function ScheduleDateScreen({ navigation }) {
+export default function ScheduleDateScreen() {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [location, setLocation] = useState('')
@@ -35,7 +36,7 @@ export default function ScheduleDateScreen({ navigation }) {
             setDescription('')
             setLocation('')
             setDate(new Date())
-            navigation.goBack()
+            router.back()
         }
     }
 

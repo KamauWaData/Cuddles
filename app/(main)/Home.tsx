@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import SwipeCard from '../components/SwipeCard'
+import SwipeCard from '../../components/SwipeCard'
 import Icon from 'react-native-vector-icons/Ionicons'
 
 const mockUsers = [

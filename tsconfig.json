@@ -6,9 +6,10 @@
       "dom",
       "esnext"
     ],
+    "types": ["nativewind/types"],
     "allowJs": true,
     "jsx": "react-native",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "strict": true,
     "esModuleInterop": true,
@@ -20,6 +21,6 @@
     "src",
     "App.tsx",
     "nativewind-env.d.ts"
-, "src/screens", "(auth)/OTP.tsx", "(onboarding)/ProfileName.tsx", "(onboarding)/Interests.tsx", "(onboarding)/Gender.tsx", "index.tsx"  ],
+, "src/screens", "app/(auth)/OTP.tsx", "app/(onboarding)/ProfileName.tsx", "app/(onboarding)/Interests.tsx", "app/(onboarding)/Gender.tsx", "app/index.tsx", "components"  ],
   "extends": "expo/tsconfig.base"
 }

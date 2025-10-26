@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import { View, Text, Image, FlatList, TouchableOpacity } from "react-native";
-import { supabase } from "../supabase/supabaseClient"; // your initialized client
+import { supabase } from "../../lib/supabase"; // your initialized client
 import { Calendar, MapPin, Clock } from "lucide-react-native";
 
 type DatePost = {
@@ -12,7 +12,6 @@ type DatePost = {
     image_url: string;
     host_is: string;
 }
-
 export default function ScheduledDateScreen() {
     const [dates, setDates] = useState<DatePost[]>([]);
     const [loading, setLoading] = useState(true);

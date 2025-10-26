@@ -1,13 +1,8 @@
 import { View, Text, Image, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/navigation';
 import { Ionicons } from '@expo/vector-icons';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+import { router } from 'expo-router';
 
 export default function Onboarding() {
-    const navigation = useNavigation<NavigationProp>();
 
     return (
         <View className="flex-1 justify-between items-center bg-pink-500 px-6 py-10">
@@ -37,14 +32,14 @@ export default function Onboarding() {
             {/* Buttons */}
             <View className="w-full mt-10">
                 <TouchableOpacity
-                onPress={() => navigation.navigate('Register')}
+                onPress={() => router.push('/(auth)/Register')}
                 className="bg-white py-3 rounded-full flex-row items-center justify-center"
                 >
                 <Text className="text-pink-500 text-base font-semibold">→ Sign up</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                onPress={() => navigation.navigate('Login')}
+                onPress={() => router.push('/(auth)/Login')}
                 className="mt-4 items-center"
                 >
                 <Text className="text-white text-sm">

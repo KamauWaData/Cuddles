@@ -3,24 +3,36 @@ import { Image, Text, View } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  runOnJS,
   withSpring,
 } from 'react-native-reanimated'
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Icon from 'react-native-vector-icons/Ionicons'
 
-export default function   SwipeCard({ user, onSwipe}) {
+type User = {
+  image: string
+  distance?: number
+  name: string
+  age?: number | string
+  location?: string
+}
+
+type SwipeCardProps = {
+  user: User
+  onSwipe: (direction: 'left' | 'right') => void
+}
+
+export default function SwipeCard({ user, onSwipe }: SwipeCardProps) {
   const translateX = useSharedValue(0)
   const rotate = useSharedValue(0)
 
   const pan = Gesture.Pan()
-    .onUpdate ((event) => {
+    .onUpdate((event) => {
       translateX.value = event.translationX
       rotate.value = event.translationX / 20
     })
     .onEnd(() => {
-      if (Math.abs(translateX.value) > 120 ) {
+      if (Math.abs(translateX.value) > 120) {
         onSwipe(translateX.value > 0 ? 'right' : 'left')
         translateX.value = withSpring(translateX.value > 0 ? 500 : -500)
       } else {
@@ -29,16 +41,15 @@ export default function   SwipeCard({ user, onSwipe}) {
       }
     })
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { rotate: `${rotate.value}deg` },
+    ],
+  }))
 
-const animatedStyle = useAnimatedStyle(() => ({
-  transform: [
-    { translateX: translateX.value },
-    { rotate: `${rotate.value}deg` },
-  ]
-}))
-
-return (
-  <GestureDetector gesture={pan}>
+  return (
+    <GestureDetector gesture={pan}>
       <Animated.View
         className="absolute w-[90%] self-center rounded-3xl overflow-hidden bg-gray-200"
         style={animatedStyle}
@@ -60,10 +71,5 @@ return (
         </View>
       </Animated.View>
     </GestureDetector>
-)
-}
-
-function onSwipe(direction: 'left' | 'right') {
-  // Handle swipe action (e.g., update state, make API call)
-  console.log(`Swiped ${direction}`);
+  )
 }
