@@ -79,13 +79,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom nav */}
-      <View className="flex-row justify-around py-4 bg-white rounded-t-3xl">
-        <Icon name="home" size={28} color="#E48DDE" />
-        <Icon name="add-circle" size={28} color="#E48DDE" />
-        <Icon name="chatbubble" size={28} color="#E48DDE" />
-        <Icon name="calendar" size={28} color="#E48DDE" /> {/* Schedule date */}
-      </View>
     </View>
   )
 }

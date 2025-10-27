@@ -1,5 +1,4 @@
 // app/_layout.tsx
-import './global.css';
 import { Stack, Slot, Redirect } from "expo-router";
 import { useSession } from "../lib/useSession";
 import { useEffect } from "react";

@@ -20,7 +20,11 @@
     "nativewind.d.ts",
     "src",
     "App.tsx",
-    "nativewind-env.d.ts"
-, "src/screens", "app/(auth)/OTP.tsx", "app/(onboarding)/ProfileName.tsx", "app/(onboarding)/Interests.tsx", "app/(onboarding)/Gender.tsx", "app/index.tsx", "components"  ],
+    "lib",
+    "nativewind-env.d.ts",
+    "app",
+    "components",
+    "global.d.ts"
+, "src/screens", "app/(auth)/OTP.tsx", "app/(auth)/(onboarding)/ProfileName.tsx", "app/(auth)/(onboarding)/Interests.tsx", "app/(auth)/(onboarding)/Gender.tsx", "app/index.tsx", "components"  ],
   "extends": "expo/tsconfig.base"
 }

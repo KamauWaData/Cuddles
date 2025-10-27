@@ -1,20 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TextInput, Button, Text, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  useEffect(() => {
+    console.log('LoginScreen mounted');
+  }, []);
+
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return Alert.alert('Login failed', error.message);
-    router.replace('/(main)/home');
+    console.log('handleLogin', { email });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('supabase signIn error', error);
+        return Alert.alert('Login failed', error.message);
+      }
+      console.log('login success', data);
+      router.replace('/(main)/home');
+    } catch (err) {
+      console.error('unexpected login error', err);
+      Alert.alert('Login failed', String(err));
+    }
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' }}>
       <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 20 }}>Welcome Back</Text>
       <TextInput
         placeholder="Email"

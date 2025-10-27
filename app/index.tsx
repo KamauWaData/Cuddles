@@ -1,4 +1,4 @@
-import "./global.css"
+
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase"
