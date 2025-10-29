@@ -11,6 +11,7 @@ export default function TabsLayout() {
           backgroundColor: "#fff",
           borderTopWidth: 0,
           height: 60,
+          
         },
         headerShown: false,
       }}
@@ -25,7 +26,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="schedule"
+        name="ScheduleDateScreen"
         options={{
           title: "Schedule",
           tabBarIcon: ({ color, size }) => (

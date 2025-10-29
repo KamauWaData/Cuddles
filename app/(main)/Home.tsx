@@ -1,84 +1,106 @@
-import React, { useState } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
-import SwipeCard from '../../components/SwipeCard'
-import Icon from 'react-native-vector-icons/Ionicons'
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Image, Dimensions } from "react-native";
+import SwipeCard from "../../components/SwipeCard";
+import Icon from "react-native-vector-icons/Ionicons";
 
-const mockUsers = [
+const users = [
   {
-    id: 1,
-    name: 'Alfredo Calzoni',
+    image: "https://i.pravatar.cc/400?img=11",
+    name: "Alfredo Calzoni",
     age: 20,
-    location: 'Hamburg, Germany',
+    location: "Hamburg, Germany",
     distance: 16.8,
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
   },
   {
-    id: 2,
-    name: 'Lara Schmidt',
-    age: 22,
-    location: 'Berlin, Germany',
+    image: "https://i.pravatar.cc/400?img=12",
+    name: "Jessica Parker",
+    age: 23,
+    location: "London, UK",
     distance: 8.2,
-    image: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
   },
-]
+  {
+    image: "https://i.pravatar.cc/400?img=13",
+    name: "Bruno Kelly",
+    age: 25,
+    location: "Berlin, Germany",
+    distance: 12.4,
+  },
+];
 
 export default function HomeScreen() {
-  const [activeTab, setActiveTab ] = useState<'friends' | 'partners'>('partners')
-  const [users, setUsers] = useState(mockUsers)
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [mode, setMode] = useState<"friends" | "partners">("friends");
 
-  const handleSwipe = (direction: string) => {
-    console.log(direction)
-    setUsers((prev) => prev.slice(1))
-  }
+  const handleSwipe = (direction: "left" | "right") => {
+    if (direction === "right") console.log("Liked!");
+    else console.log("Disliked!");
+
+    setCurrentIndex((prev) => (prev + 1 < users.length ? prev + 1 : 0));
+  };
+
+  const currentUser = users[currentIndex];
 
   return (
-    <View className="flex-1 bg-pinkPrimary pt-12">
-      {/* Header */}
-      <View className="flex-row justify-between px-6 items-center mb-4">
-        <View className="flex-row bg-white rounded-full p-1">
-          <TouchableOpacity
-            className={`px-4 py-2 rounded-full ${activeTab === 'friends' ? 'bg-pinkAccent' : ''}`}
-            onPress={() => setActiveTab('friends')}
+    <View className="flex-1 bg-pink-100">
+      {/* Top Segmented Buttons */}
+      <View className="flex-row justify-center mt-12 mb-4 space-x-2">
+        <TouchableOpacity
+          onPress={() => setMode("friends")}
+          className={`px-4 py-2 rounded-full ${
+            mode === "friends" ? "bg-pink-500" : "bg-white"
+          }`}
+        >
+          <Text
+            className={`${
+              mode === "friends" ? "text-white" : "text-gray-700"
+            } font-semibold`}
           >
-            <Text className={activeTab === 'friends' ? 'text-white' : 'text-gray-500'}>
-              Make Friends
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`px-4 py-2 rounded-full ${activeTab === 'partners' ? 'bg-pinkAccent' : ''}`}
-            onPress={() => setActiveTab('partners')}
+            Make Friends
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setMode("partners")}
+          className={`px-4 py-2 rounded-full ${
+            mode === "partners" ? "bg-pink-500" : "bg-white"
+          }`}
+        >
+          <Text
+            className={`${
+              mode === "partners" ? "text-white" : "text-gray-700"
+            } font-semibold`}
           >
-            <Text className={activeTab === 'partners' ? 'text-white' : 'text-gray-500'}>
-              Search Partners
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity>
-          <Icon name="heart-outline" size={26} color="#fff" />
+            Search Partners
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Cards */}
-      <View className="flex-1 items-center justify-center">
-        {users.map((user, i) => (
-          <SwipeCard key={user.id} user={user} onSwipe={handleSwipe} />
-        ))}
+      {/* Swipe Deck */}
+      <View className="flex-1 justify-center items-center">
+      {currentUser && (
+        <SwipeCard
+          key={currentUser.name}
+          user={currentUser}
+            onSwipe={handleSwipe}
+          />
+        )}
       </View>
 
-      {/* Action buttons */}
-      <View className="flex-row justify-evenly mb-6">
-        <TouchableOpacity className="bg-white w-16 h-16 rounded-full items-center justify-center shadow-lg">
-          <Icon name="close" size={30} color="#FF5C5C" />
+
+      {/* Bottom Buttons */}
+      <View className="flex-row justify-center items-center mb-10 space-x-6">
+        <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
+          <Icon name="close" size={28} color="#FF3366" />
         </TouchableOpacity>
-        <TouchableOpacity className="bg-white w-16 h-16 rounded-full items-center justify-center shadow-lg">
-          <Icon name="star" size={30} color="#9B59B6" />
+
+        <TouchableOpacity className="bg-white w-16 h-16 rounded-full shadow items-center justify-center">
+          <Icon name="star" size={32} color="#FF3366" />
         </TouchableOpacity>
-        <TouchableOpacity className="bg-white w-16 h-16 rounded-full items-center justify-center shadow-lg">
-          <Icon name="heart" size={30} color="#E48DDE" />
+
+        <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
+          <Icon name="heart" size={28} color="#FF3366" />
         </TouchableOpacity>
       </View>
-
     </View>
-  )
+  );
 }

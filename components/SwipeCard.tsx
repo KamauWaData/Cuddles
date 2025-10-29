@@ -1,75 +1,167 @@
-import React from 'react'
-import { Image, Text, View } from 'react-native'
+import React from "react";
+import { View, Text, Image, Dimensions, StyleSheet } from "react-native";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  interpolate,
   withSpring,
-} from 'react-native-reanimated'
+  runOnJS,
+} from "react-native-reanimated";
 
-import { Gesture, GestureDetector } from 'react-native-gesture-handler'
-import Icon from 'react-native-vector-icons/Ionicons'
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
-type User = {
-  image: string
-  distance?: number
-  name: string
-  age?: number | string
-  location?: string
+interface User {
+  image: string;
+  name: string;
+  age: number;
+  location: string;
+  distance: number;
 }
 
-type SwipeCardProps = {
-  user: User
-  onSwipe: (direction: 'left' | 'right') => void
+interface SwipeCardProps {
+  user: User;
+  onSwipe: (direction: "left" | "right") => void;
 }
 
 export default function SwipeCard({ user, onSwipe }: SwipeCardProps) {
-  const translateX = useSharedValue(0)
-  const rotate = useSharedValue(0)
+  const translateX = useSharedValue(0);
+  const rotate = useSharedValue(0);
 
   const pan = Gesture.Pan()
     .onUpdate((event) => {
-      translateX.value = event.translationX
-      rotate.value = event.translationX / 20
+      translateX.value = event.translationX;
+      rotate.value = event.translationX / 20;
     })
-    .onEnd(() => {
-      if (Math.abs(translateX.value) > 120) {
-        onSwipe(translateX.value > 0 ? 'right' : 'left')
-        translateX.value = withSpring(translateX.value > 0 ? 500 : -500)
+    .onEnd((event) => {
+      if (Math.abs(event.translationX) > 120) {
+        const direction = event.translationX > 0 ? "right" : "left";
+        runOnJS(onSwipe)(direction);
+        translateX.value = withSpring(
+          direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5
+        );
       } else {
-        translateX.value = withSpring(0)
-        rotate.value = withSpring(0)
+        translateX.value = withSpring(0);
+        rotate.value = withSpring(0);
       }
-    })
+    });
 
+  // Card movement
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
       { rotate: `${rotate.value}deg` },
     ],
-  }))
+  }));
+
+  // Like / Nope overlay animations
+  const likeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, 100], [0, 1]),
+    transform: [{ scale: interpolate(translateX.value, [0, 100], [0.8, 1.2]) }],
+  }));
+
+  const nopeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, -100], [0, 1]),
+    transform: [{ scale: interpolate(translateX.value, [0, -100], [0.8, 1.2]) }],
+  }));
 
   return (
-    <GestureDetector gesture={pan}>
-      <Animated.View
-        className="absolute w-[90%] self-center rounded-3xl overflow-hidden bg-gray-200"
-        style={animatedStyle}
-      >
-        <Image source={{ uri: user.image }} className="w-full h-[500px]" />
-        <View className="absolute left-3 top-3 bg-black/40 px-3 py-1 rounded-full">
-          <Text className="text-white text-sm">{user.distance} km away</Text>
-        </View>
+    <GestureHandlerRootView>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.card, animatedStyle]}>
+          <Image source={{ uri: user.image }} style={styles.image} />
 
-        <View className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
-          <Text className="text-white text-2xl font-semibold">
-            {user.name}, {user.age}
-          </Text>
-          <Text className="text-gray-200">{user.location}</Text>
-          <View className="flex-row space-x-3 mt-2">
-            <Icon name="logo-instagram" size={20} color="white" />
-            <Icon name="logo-twitter" size={20} color="white" />
+          {/* Like Overlay */}
+          <Animated.View style={[styles.likeOverlay, likeStyle]}>
+            <Text style={styles.likeText}>LIKE ❤️</Text>
+          </Animated.View>
+
+          {/* Nope Overlay */}
+          <Animated.View style={[styles.nopeOverlay, nopeStyle]}>
+            <Text style={styles.nopeText}>NOPE ❌</Text>
+          </Animated.View>
+
+          {/* Info Section */}
+          <View style={styles.infoContainer}>
+            <Text style={styles.name}>
+              {user.name}, {user.age}
+            </Text>
+            <Text style={styles.details}>
+              {user.location} • {user.distance} km away
+            </Text>
           </View>
-        </View>
-      </Animated.View>
-    </GestureDetector>
-  )
+        </Animated.View>
+      </GestureDetector>
+    </GestureHandlerRootView>
+  );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    width: SCREEN_WIDTH * 0.4,
+    height: SCREEN_WIDTH * 0.8,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  likeOverlay: {
+    position: "absolute",
+    top: 60,
+    left: 30,
+    padding: 10,
+    borderWidth: 3,
+    borderColor: "#4CAF50",
+    borderRadius: 10,
+    transform: [{ rotate: "-15deg" }],
+  },
+  likeText: {
+    color: "#4CAF50",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  nopeOverlay: {
+    position: "absolute",
+    top: 60,
+    right: 30,
+    padding: 10,
+    borderWidth: 3,
+    borderColor: "#F44336",
+    borderRadius: 10,
+    transform: [{ rotate: "15deg" }],
+  },
+  nopeText: {
+    color: "#F44336",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  infoContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  name: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  details: {
+    color: "#eee",
+    fontSize: 14,
+  },
+});

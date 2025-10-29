@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 const genderOptions = ["Man", "Woman"];
 
 export default function Gender() {
-  // ✅ Get params from previous screen
   const { uid, profile } = useLocalSearchParams();
-
   const parsedProfile =
     typeof profile === "string" ? JSON.parse(profile) : profile;
 
@@ -15,20 +14,19 @@ export default function Gender() {
   const [showMe, setShowMe] = useState<string[]>([]);
 
   const toggleShowMe = (option: string) => {
-    if (showMe.includes(option)) {
-      setShowMe(showMe.filter((item) => item !== option));
-    } else {
-      setShowMe([...showMe, option]);
-    }
+    setShowMe((prev) =>
+      prev.includes(option)
+        ? prev.filter((item) => item !== option)
+        : [...prev, option]
+    );
   };
 
   const handleContinue = () => {
     if (!gender || showMe.length === 0) {
-      Alert.alert("Please select your gender and who to show you");
+      Alert.alert("Missing Info", "Please select your gender and who to show you.");
       return;
     }
 
-    // ✅ Navigate to Interests screen
     router.push({
       pathname: "/(auth)/Interests",
       params: {
@@ -43,22 +41,36 @@ export default function Gender() {
   };
 
   return (
-    <View className="flex-1 p-6 justify-center bg-white">
-      {/* Gender selection */}
-      <Text className="text-xl font-bold mb-4">I am a</Text>
-      <View className="flex-row flex-wrap gap-2 mb-6">
+    <LinearGradient
+      colors={["#fff0f5", "#ffe4e1"]}
+      className="flex-1 p-6 justify-center"
+    >
+      <View className="items-center mb-10">
+        <Text className="text-3xl font-extrabold text-pink-600 mb-2">
+          Let's Personalize You
+        </Text>
+        <Text className="text-gray-600 text-center">
+          Select your gender and who you want to see
+        </Text>
+      </View>
+
+      {/* Gender Selection */}
+      <Text className="text-lg font-semibold text-gray-700 mb-3">I am a</Text>
+      <View className="flex-row justify-around mb-8">
         {genderOptions.map((option) => (
           <TouchableOpacity
             key={option}
             onPress={() => setGender(option)}
-            className={`px-4 py-2 rounded-full border ${
+            className={`px-8 py-4 rounded-2xl shadow-sm border ${
               gender === option
                 ? "bg-pink-500 border-pink-500"
-                : "border-gray-300"
+                : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={gender === option ? "text-white" : "text-gray-700"}
+              className={`text-base font-semibold ${
+                gender === option ? "text-white" : "text-gray-700"
+              }`}
             >
               {option}
             </Text>
@@ -66,23 +78,25 @@ export default function Gender() {
         ))}
       </View>
 
-      {/* Show me section */}
-      <Text className="text-xl font-bold mb-4">Show me</Text>
-      <View className="flex-row flex-wrap gap-2 mb-6">
+      {/* Show Me Selection */}
+      <Text className="text-lg font-semibold text-gray-700 mb-3">
+        Show me
+      </Text>
+      <View className="flex-row justify-around mb-10">
         {genderOptions.map((option) => (
           <TouchableOpacity
             key={option}
             onPress={() => toggleShowMe(option)}
-            className={`px-4 py-2 rounded-full border ${
+            className={`px-8 py-4 rounded-2xl shadow-sm border ${
               showMe.includes(option)
                 ? "bg-pink-500 border-pink-500"
-                : "border-gray-300"
+                : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={
+              className={`text-base font-semibold ${
                 showMe.includes(option) ? "text-white" : "text-gray-700"
-              }
+              }`}
             >
               {option}
             </Text>
@@ -90,13 +104,19 @@ export default function Gender() {
         ))}
       </View>
 
-      {/* Continue */}
-      <TouchableOpacity
-        onPress={handleContinue}
-        className="bg-pink-500 p-4 rounded"
-      >
-        <Text className="text-white text-center font-bold">Continue</Text>
+      {/* Continue Button */}
+      <TouchableOpacity onPress={handleContinue} activeOpacity={0.9}>
+        <LinearGradient
+          colors={["#ff69b4", "#ff1493"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="p-4 rounded-2xl shadow-md"
+        >
+          <Text className="text-center text-white font-bold text-lg">
+            Continue
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 }
