@@ -11,8 +11,12 @@ import {
 import { useLocalSearchParams, router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+// Use the legacy import for readAsStringAsync to avoid the deprecated runtime behavior
 import * as FileSystem from "expo-file-system";
+import { readAsStringAsync as readAsStringAsyncLegacy } from "expo-file-system/legacy";
 import { supabase } from "../../../lib/supabase";
+import SkipButton from "../../../components/onboarding/SkipButton";
+import TextInputField from "../../../components/TextInputField";
 
 export default function ProfileName() {
   const { uid } = useLocalSearchParams();
@@ -43,8 +47,10 @@ export default function ProfileName() {
       const fileExt = file.uri.split(".").pop() || "jpg";
       const filePath = `avatars/${uid ?? Date.now()}.${fileExt}`;
 
-      // ✅ Read as base64 safely (no EncodingType)
-      const base64 = await FileSystem.readAsStringAsync(file.uri, {
+      // ✅ Read as base64 safely using the legacy implementation which preserves the
+      // old signature and runtime behavior. The modern API recommends using
+      // new File().text() for other flows.
+      const base64 = await readAsStringAsyncLegacy(file.uri, {
         encoding: "base64",
       });
 
@@ -123,6 +129,31 @@ export default function ProfileName() {
 
   return (
     <View className="flex-1 bg-white px-6 justify-center">
+      <View className="flex-row justify-between items-center mb-6">
+
+        <Text className="text-xl font-bold">Your Profile Name</Text>
+         
+        <SkipButton
+          to="/(auth)/(onboarding)/Gender"
+          onSkip={async () => {
+            try {
+              await supabase.from("users").upsert({
+                id: uid,
+                name: null,
+                profile_complete: false,
+                updatedAt: new Date().toISOString(),
+              });
+              router.push("/(main)/home");
+            } catch (err) {
+              console.error("Skip upsert error:", err);
+            }
+          }}
+        />
+      </View>
+      {/* Progress indicator */}
+        <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
+          <View className="h-full bg-pink-500 w-1/5" />
+        </View> 
       {/* Avatar */}
       <TouchableOpacity
         onPress={handleAvatarUpload}
@@ -131,7 +162,7 @@ export default function ProfileName() {
         {avatar ? (
           <Image
             source={{ uri: avatar }}
-            style={{ width: 96, height: 96, borderRadius: 48 }}
+            style={{ width: 150, height: 105, borderRadius: 48 }}
           />
         ) : (
           <View className="w-24 h-24 rounded-full bg-gray-200 justify-center items-center">
@@ -141,17 +172,16 @@ export default function ProfileName() {
       </TouchableOpacity>
 
       {/* Inputs */}
-      <TextInput
+      <TextInputField
         placeholder="First Name"
         value={firstName}
         onChangeText={setFirstName}
-        className="border border-gray-300 rounded-lg p-4 mb-4"
       />
-      <TextInput
+      <TextInputField
         placeholder="Last Name"
         value={lastName}
         onChangeText={setLastName}
-        className="border border-gray-300 rounded-lg p-4 mb-4"
+      
       />
 
       {/* Birthday */}

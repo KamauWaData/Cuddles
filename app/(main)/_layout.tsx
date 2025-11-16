@@ -11,6 +11,9 @@ export default function TabsLayout() {
           backgroundColor: "#fff",
           borderTopWidth: 0,
           height: 60,
+          marginBottom: 10,
+          borderRadius: 10,
+          marginHorizontal: 5
           
         },
         headerShown: false,
@@ -26,7 +29,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="ScheduleDateScreen"
+        name="ScheduledDatesScreen"
         options={{
           title: "Schedule",
           tabBarIcon: ({ color, size }) => (
@@ -35,9 +38,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="messages"
         options={{
-          title: "Chat",
+          title: "messages",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" color={color} size={size} />
           ),

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
+import SkipButton from "../../../components/onboarding/SkipButton";
 
 const INTEREST_OPTIONS = [
   "Sports", "Music", "Travel", "Movies", "Books", "Fitness", "Cooking", "Art",
@@ -56,7 +57,7 @@ export default function Interests() {
       };
 
       const { error } = await supabase
-        .from("profiles") // ✅ use consistent table
+        .from("profiles")
         .upsert({ id: uid, ...userProfile });
 
       if (error) {
@@ -72,15 +73,49 @@ export default function Interests() {
     }
   };
 
+  const handleSkip = async () => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({
+          id: uid,
+          interests: [],
+          profile_complete: false,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error("Supabase skip error:", error);
+        Alert.alert("Couldn't skip", "Please try again later.");
+        return;
+      }
+
+      router.replace("/(main)/home");
+    } catch (err: any) {
+      console.error("Skip error:", err);
+      Alert.alert("Unexpected Error", err.message || "Please try again.");
+    }
+  };
+
   return (
     <View className="flex-1 bg-white">
+      <View className="flex-row justify-between items-center mb-4">
+        <TouchableOpacity onPress={() => router.back()} className="px-2 py-1">
+          <Text className="text-pink-500">Back</Text>
+        </TouchableOpacity>
+
+        <Text className="text-xl font-bold">Your Interests</Text>
+
+        <SkipButton to="/(main)/home" onSkip={handleSkip} />
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Progress indicator */}
         <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
-          <View className="h-full bg-pink-500 w-4/5" />
+          <View className="h-full bg-pink-500 w-5/5" />
         </View>
 
         <Text className="text-2xl font-bold mb-2">Your Interests</Text>

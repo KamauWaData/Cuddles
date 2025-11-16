@@ -102,7 +102,7 @@ export default function SwipeCard({ user, onSwipe }: SwipeCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    width: SCREEN_WIDTH * 0.4,
+    width: SCREEN_WIDTH * 0.9,
     height: SCREEN_WIDTH * 0.8,
     borderRadius: 20,
     overflow: "hidden",

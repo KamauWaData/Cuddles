@@ -1,9 +1,7 @@
-// ...existing code...
 import React, { useEffect, useRef } from "react";
-import { Slot } from "expo-router";
-import { useRouter } from "expo-router";
+import { Slot, useRouter } from "expo-router";
 import { useSession } from "../lib/useSession";
-import { ActivityIndicator, View } from "react-native";
+import BrandedLoading from "../components/BrandedLoading";
 
 export default function RootLayout() {
   const { session, loading } = useSession();
@@ -13,15 +11,17 @@ export default function RootLayout() {
   useEffect(() => {
     if (loading) return;
 
-    // decide target route (must be an actual route file)
     const onboarded = (session as any)?.user?.user_metadata?.onboarded;
-    const target = !session ? "/(auth)/login" : !onboarded ? "/(auth)/(onboarding)/ProfileName" : null;
+    const target = !session
+      ? "/(auth)/login"
+      : !onboarded
+      ? "/(auth)/(onboarding)/ProfileName"
+      : null;
 
     if (!target) return;
-    if (lastRedirectRef.current === target) return; // already redirected to this target
+    if (lastRedirectRef.current === target) return;
 
     lastRedirectRef.current = target;
-    // schedule a single replace to avoid rapid repeated navigation
     const t = setTimeout(() => {
       try {
         router.replace(target);
@@ -34,13 +34,8 @@ export default function RootLayout() {
   }, [loading, session, router]);
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#ff3366" />
-      </View>
-    );
+    return <BrandedLoading message="Connecting..." />;
   }
 
   return <Slot />;
 }
-// ...existing code...

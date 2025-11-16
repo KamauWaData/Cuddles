@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { supabase } from "../../../lib/supabase";
+import SkipButton from "../../../components/onboarding/SkipButton";
 
 const genderOptions = ["Man", "Woman"];
 
@@ -45,6 +47,30 @@ export default function Gender() {
       colors={["#fff0f5", "#ffe4e1"]}
       className="flex-1 p-6 justify-center"
     >
+      <View className="flex-row justify-between items-center mb-6">
+        <TouchableOpacity onPress={() => router.back()} className="px-2 py-1">
+          <Text className="text-pink-500">Back</Text>
+        </TouchableOpacity>
+
+        <Text className="text-xl font-bold">Your Profile Name</Text>
+        
+        <SkipButton
+          to="/(auth)/(onboarding)/Interests"
+          onSkip={async () => {
+            await supabase.from("users").upsert({
+              id: uid,
+              name: null,
+              profile_complete: false,
+              updatedAt: new Date().toISOString(),
+            });
+          }}
+        />
+      </View>
+      {/* Progress indicator */}
+        <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
+          <View className="h-full bg-pink-500 w-3/5" />
+        </View>
+
       <View className="items-center mb-10">
         <Text className="text-3xl font-extrabold text-pink-600 mb-2">
           Let's Personalize You
