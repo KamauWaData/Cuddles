@@ -1,52 +1,177 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, Dimensions } from "react-native";
+
 import SwipeCard from "../../components/SwipeCard";
-import Icon from "react-native-vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
-const users = [
-  {
-    id: 1,
-    image: "https://i.pravatar.cc/400?img=11",
-    name: "Alfredo Calzoni",
-    age: 20,
-    location: "Hamburg, Germany",
-    distance: 16.8,
-  },
-  {
-    id: 2,
-    image: "https://i.pravatar.cc/400?img=12",
-    name: "Jessica Parker",
-    age: 23,
-    location: "London, UK",
-    distance: 8.2,
-  },
-  {
-    id: 3,
-    image: "https://i.pravatar.cc/400?img=13",
-    name: "Bruno Kelly",
-    age: 25,
-    location: "Berlin, Germany",
-    distance: 12.4,
-  },
-];
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from "react-native";
+import { supabase } from "../../lib/supabase";
+import { useRouter } from "expo-router";
+import { boundingBox, haversineKm } from "../../lib/geo";
+import CardStack from "../../components/CardStack"; // we'll add component below
+import Icon from "@expo/vector-icons/Ionicons";
+import BrandedLoading from "../../components/BrandedLoading";
+
+const SCREEN_W = Dimensions.get("window").width;
 
 export default function HomeScreen() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [mode, setMode] = useState<"friends" | "partners">("friends");
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [radiusKm, setRadiusKm] = useState<number>(50); //default radius
+  const mountedRef = useRef(true);
 
-  const handleSwipe = (direction: "left" | "right") => {
-    if (direction === "right") console.log("Liked!");
-    else console.log("Disliked!");
+  useEffect(() => {
+    mountedRef.current = true;
+    (async () => {
+      await fetchMyProfileAndCandidates();
+    })();
+    return () => { mountedRef.current = false; };
+  }, []);
 
-    setCurrentIndex((prev) => (prev + 1 < users.length ? prev + 1 : 0));
-  };
+  const fetchMyProfileAndCandidates = async () => {
+    setLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const myId = auth?.user?.id;
+      if (!myId) { setLoading(false); return; }
 
-  const currentUser = users[currentIndex];
+      // get my profile (includes show_me, interests, lat/lon)
+      const { data: me, error: meErr} = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", myId)
+        .single();
+      if (meErr) throw meErr;
+      setUserProfile(me);
+
+      // bounding box
+      const lat = me.latitude ?? 0;
+      const lon = me.longitude ?? 0;
+      const { minLat, maxLat, minLon, maxLon } = boundingBox(lat, lon, radiusKm);
+
+      // fetch candidates roughly within box, excluding me
+      const { data: rows, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .neq("id", myId)
+        .gte("latitude", minLat)
+        .lte("latitude", maxLat)
+        .gte("longitude", minLon)
+        .lte("longitude", maxLon)
+        .limit(200);
+
+      if (error) throw error;
+
+      const filtered = (rows || []).filter((p: any) => {
+        if (!p.latitude || !p.longitude) return false;
+        // gender filter: p.gender should be in my show_me OR I show everyone
+        if (me.show_me && me.show_me.length > 0) {
+            if (!me.show_me.includes(p.gender)) return false;
+        }
+
+        // interests overlap: optional, prefer at least 1 match if user has interests
+        if (me.interests && me.interests.length > 0 && p.interests && p.interests.length > 0) {
+          const overlap = p.interests.filter((i: string) => me.interests.includes(i));
+          if (overlap.length === 0) {
+            // allow but deprioritize — for now filter out (change to sort if you prefer)
+            return false;
+          }
+        }
+        // distance
+        const dist = haversineKm(lat, lon, p.latitude, p.longitude);
+        (p as any).distanceKm = dist;
+        return dist <= radiusKm;
+      })
+
+        // sort by distance asc
+        filtered.sort((a: any, b: any) => a.distanceKm - b.distanceKm);
+
+          if (mountedRef.current) setCandidates(filtered);
+        } catch (err) {
+          console.error("discover fetch err", err);
+        } finally {
+          if (mountedRef.current) setLoading(false);
+        }
+      };
+    // called when user swipes
+    const onSwipe = async (profileId: string, direction: "left" | "right", profileObj: any) => {
+      if (direction === "right") {
+        try {
+          // insert like
+          const { error } = await supabase
+            .from("likes")
+            .insert({ user_id: userProfile.id, liked_id: profileId })
+            .select();
+          if (error && error.code !== "23505") { // ignore duplicate unique violation
+            console.error("like insert error", error);
+          }
+
+          // check if mutual like exists: does profileId like me?
+          const { data: mutual } = await supabase
+            .from("likes")
+            .select("*")
+            .eq("user_id", profileId)
+            .eq("liked_id", userProfile.id)
+            .single();
+
+          if (mutual) {
+            // create match (ensure unique order)
+            const [a,b] = [userProfile.id, profileId].sort();
+            const { error: matchErr } = await supabase
+              .from("matches")
+              .insert({ user_a: a, user_b: b })
+              .select();
+            if (matchErr && matchErr.code !== "23505") console.error("match create err", matchErr);
+
+            // create conversation and route to chat
+            // get the match id (try to fetch one)
+            const { data: matchData } = await supabase
+              .from("matches")
+              .select("id")
+              .or(`(user_a.eq.${a},user_b.eq.${b})`)
+              .single();
+
+            if (matchData?.id) {
+              const { data: conv } = await supabase
+                .from("conversations")
+                .insert({ match_id: matchData.id })
+                .select()
+                .single();
+
+              const convId = conv?.id ?? null;
+              if (convId) {
+                // navigate user to the new conversation (chat)
+                router.push(`/ (main)/chat/${convId}`.replace(' / (main)','/(main'));
+              }
+            }
+          }
+        } catch (err) {
+          console.error("onSwipe error", err);
+        }
+      }
+    };
+  
+    if (loading) {
+      return (
+        <View className="flex-1 items-center justify-center bg-white">
+          <BrandedLoading message="Loading profiles..." />
+        </View>
+      )
+    }
 
   return (
     <SafeAreaView className="flex-1 bg-pink-100">
+      {/* header controls */}
+      <View className="flex-row items-center justify-between p-4">
+        <Text className="text-xl font-bold">Discover</Text>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <TouchableOpacity onPress={() => fetchMyProfileAndCandidates()}>
+            <Icon name="refresh-outline" size={22} color="#444" />
+          </TouchableOpacity>
+        </View>
+      </View>
       {/* Top row: left icon and grouped right icons */}
       <View className="flex-row items-center justify-between px-6 mt-6">
         {/* left-aligned */}
@@ -55,50 +180,33 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* right-aligned group */}
-        <View className="flex-row items-center space-x-3 ">
-          <TouchableOpacity className="rounded-full bg-white shadow p-3">
-            <Icon name="heart-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
-          </TouchableOpacity>
-          <TouchableOpacity className="rounded-full bg-white shadow p-3">
-            <Icon name="filter-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Swipe Deck wrapper: centered, width matches SwipeCard (w-[90%]) */}
-      <View className="flex-1 mt-6 items-center">
-        <View className="w-[90%] max-h-[480px] bg-white rounded-3xl shadow-lg justify-center items-center overflow-hidden">
-          {currentUser && (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() =>
-                router.push({
-                  pathname: "/(main)/profile/[id]",
-                  params: { id: currentUser.id },
-                })
-              }
-              className="w-full h-400"
-            >
-              <SwipeCard key={currentUser.id} user={currentUser} onSwipe={handleSwipe} />
+          <View className="flex-row items-center space-x-3 ">
+            <TouchableOpacity className="rounded-full bg-white shadow p-3">
+              <Icon name="heart-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
             </TouchableOpacity>
-          )}
-
-          {/* Bottom Buttons (full width of the wrapper, centered) */}
-          <View className="w-full flex-row justify-center items-center space-x-6 mb-2 p-4">
-            <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
-              <Icon name="close" size={28} color="#FF3366" />
-            </TouchableOpacity>
-
-            <TouchableOpacity className="bg-white w-16 h-16 rounded-full shadow items-center justify-center">
-              <Icon name="star" size={32} color="#FF3366" />
-            </TouchableOpacity>
-
-            <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
-              <Icon name="heart" size={28} color="#FF3366" />
+            <TouchableOpacity className="rounded-full bg-white shadow p-3">
+              <Icon name="filter-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+
+        {/* card stack */}
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <CardStack items={candidates} onSwipe={onSwipe} />
+        </View>
+
+        {/* bottom nav / actions */}
+        <View className="flex-row justify-center items-center mb-10 space-x-6">
+          <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
+            <Icon name="close" size={28} color="#FF3366" />
+          </TouchableOpacity>
+          <TouchableOpacity className="bg-white w-16 h-16 rounded-full shadow items-center justify-center">
+            <Icon name="star" size={32} color="#FF3366" />
+          </TouchableOpacity>
+          <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
+            <Icon name="heart" size={28} color="#FF3366" />
+          </TouchableOpacity>
+        </View>
     </SafeAreaView>
   );
 }

@@ -2,6 +2,7 @@ import { View, Text, Image, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useUser } from "@supabase/auth-helpers-react";
 import { supabase } from "../../lib/supabase";
+import { useEffect, useState } from "react";
 
 export default function MyProfile() {
   const router = useRouter();
