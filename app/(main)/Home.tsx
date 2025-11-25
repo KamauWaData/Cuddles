@@ -2,7 +2,7 @@
 import SwipeCard from "../../components/SwipeCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-
+import { likeProfile, dislikeProfile, superLikeProfile } from "../../lib/match";
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from "react-native";
 import { supabase } from "../../lib/supabase";
@@ -95,6 +95,50 @@ export default function HomeScreen() {
           if (mountedRef.current) setLoading(false);
         }
       };
+
+    async function getMyId() {
+      const { data } = await supabase.auth.getUser();
+      return data?.user?.id;
+    }
+
+    async function handleDislike(targetId: string) {
+      const myId = await getMyId();
+      if (!myId) return;
+
+      await dislikeProfile(myId, targetId); // Your backend RPC
+      onNext(); // move to next card
+    }
+
+    async function handleLike(targetId: string) {
+      const myId = await getMyId();
+      if (!myId) return;
+
+      const { matched, conversationId } = await likeProfile(myId, targetId);
+
+      onNext(); // move to next card
+
+      if (matched && conversationId) {
+        setMatchedUser(currentProfile);
+        setMatchConversationId(conversationId);
+        setShowMatchModal(true);
+      }
+    }
+
+    async function handleSuperLike(targetId: string) {
+      const myId = await getMyId();
+      if (!myId) return;
+
+      const { matched, conversationId } = await superLikeProfile(myId, targetId);
+
+      onNext(); 
+
+      if (matched && conversationId) {
+        setMatchedUser(currentProfile);
+        setMatchConversationId(conversationId);
+        setShowMatchModal(true);
+      }
+    }
+
     // called when user swipes
     const onSwipe = async (profileId: string, direction: "left" | "right", profileObj: any) => {
       if (direction === "right") {
@@ -197,16 +241,31 @@ export default function HomeScreen() {
 
         {/* bottom nav / actions */}
         <View className="flex-row justify-center items-center mb-10 space-x-6">
-          <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
-            <Icon name="close" size={28} color="#FF3366" />
-          </TouchableOpacity>
-          <TouchableOpacity className="bg-white w-16 h-16 rounded-full shadow items-center justify-center">
-            <Icon name="star" size={32} color="#FF3366" />
-          </TouchableOpacity>
-          <TouchableOpacity className="bg-white w-14 h-14 rounded-full shadow items-center justify-center">
-            <Icon name="heart" size={28} color="#FF3366" />
-          </TouchableOpacity>
-        </View>
+        {/* Dislike */}
+        <TouchableOpacity
+          className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
+          onPress={() => handleDislike(currentProfile.id)}
+        >
+          <Icon name="close" size={28} color="#FF3366" />
+        </TouchableOpacity>
+
+        {/* Super Like */}
+        <TouchableOpacity
+          className="bg-white w-16 h-16 rounded-full shadow items-center justify-center"
+          onPress={() => handleSuperLike(currentProfile.id)}
+        >
+          <Icon name="star" size={32} color="#FF3366" />
+        </TouchableOpacity>
+
+        {/* Like */}
+        <TouchableOpacity
+          className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
+          onPress={() => handleLike(currentProfile.id)}
+        >
+          <Icon name="heart" size={28} color="#FF3366" />
+        </TouchableOpacity>
+      </View>
+
     </SafeAreaView>
   );
 }

@@ -154,6 +154,18 @@ export default function ScheduleDate() {
     return true;
   };
 
+  const payload = {
+      user_id: userId,
+      title: title.trim(),
+      description: description.trim() || null,
+      location: location.trim(),
+      image_url: imageUrl || null,
+      event_date: date.toISOString(),
+      is_active: true,
+      lat,
+      lng
+    };
+
   const getLocation = async () => {
   const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {

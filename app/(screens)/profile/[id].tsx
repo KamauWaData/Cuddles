@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, Image, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
+import { blockUser, reportUser } from "../../../lib/block";
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -24,6 +25,20 @@ export default function UserProfileScreen() {
 
   if (!profile) return null;
 
+  const handleBlock = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth?.user?.id;
+    if (!me) { Alert.alert("Sign in"); return; }
+    await blockUser(me, profile.id);
+    Alert.alert("Blocked", "User has been blocked. You won't see them again.");
+    router.back();
+  };
+
+   const handleReport = async () => {
+      // simple prompt: ask user for reason or send default
+      await reportUser(me, profile.id, "Inappropriate behaviour");
+      Alert.alert("Reported", "Thanks for flagging. We'll review this user.");
+    };
   return (
     <ScrollView className="flex-1 bg-white">
 
@@ -49,6 +64,14 @@ export default function UserProfileScreen() {
       </View>
 
       <View className="px-6 mt-6">
+
+        <TouchableOpacity>
+          <Text className="text-red">Block</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity>
+          <Text className="text-black">Report</Text>
+        </TouchableOpacity>
 
         {/* Name & Location */}
         <Text className="text-3xl font-bold">
