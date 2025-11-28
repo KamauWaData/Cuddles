@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 export default function ChatList() {
   const [conversations, setConversations] = useState<any[]>([]);

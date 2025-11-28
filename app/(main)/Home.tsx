@@ -1,7 +1,7 @@
 
 import SwipeCard from "../../components/SwipeCard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { likeProfile, dislikeProfile, superLikeProfile } from "../../lib/match";
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from "react-native";
@@ -21,6 +21,18 @@ export default function HomeScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [radiusKm, setRadiusKm] = useState<number>(50); //default radius
   const mountedRef = useRef(true);
+
+  const { minAge, maxAge, distance, gender} = useLocalSearchParams();
+  
+  const genderFilter = gender? JSON.parse(gender as string) : ["Man", "Woman"];
+
+  const { data, error } = await supabase.rpc("search_profiles", {
+    p_user_id: userProfile.id,
+    p_min_age: Number(minAge) || 18,
+    p_max_age: Number(maxAge) || 99,
+    p_gender_filter: genderFilter,
+    p_distance_km: Number(distance) || 50,
+  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -228,7 +240,9 @@ export default function HomeScreen() {
             <TouchableOpacity className="rounded-full bg-white shadow p-3">
               <Icon name="heart-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
             </TouchableOpacity>
-            <TouchableOpacity className="rounded-full bg-white shadow p-3">
+            <TouchableOpacity className="rounded-full bg-white shadow p-3"
+              onPress={() => router.push("/(screens)/Filters")}
+            >
               <Icon name="filter-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
             </TouchableOpacity>
           </View>
