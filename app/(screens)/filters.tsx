@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Slider } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
+import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
 
 export default function Filters() {
@@ -9,9 +10,9 @@ export default function Filters() {
     const [genderFilter, setGenderFilter] = useState<string[]>(["Man", "Woman"]);
 
     const toggleGender = (g: string) => {
-        setGenderFilter((prev) => 
-        prev.includes(g) ? prev.filter((i) i !== g) : [...prev, g]
-    );
+        setGenderFilter((prev) =>
+            prev.includes(g) ? prev.filter((i) => i !== g) : [...prev, g]
+        );
     };
 
     const applyFilters = () => {
@@ -33,12 +34,12 @@ export default function Filters() {
         {/* Age Range */}
         <Text className="font-semibold mb-2">Age Range: {minAge} - {maxAge}</Text>
 
-        <Slider value={minAge} minimumValue={18} maximumValue={60} onValueChange={setMinAge} />
-        <Slider value={maxAge} minimumValue={18} maximumValue={99} onValueChange={setMaxAge} />
+        <Slider value={minAge} minimumValue={18} maximumValue={60} onValueChange={(v: number) => setMinAge(Math.round(v))} />
+        <Slider value={maxAge} minimumValue={18} maximumValue={99} onValueChange={(v: number) => setMaxAge(Math.round(v))} />
 
         {/* Distance */}
         <Text className="font-semibold mt-6">Distance: {distance} km</Text>
-        <Slider value={distance} minimumValue={5} maximumValue={200} onValueChange={setDistance} />
+        <Slider value={distance} minimumValue={5} maximumValue={200} onValueChange={(v: number) => setDistance(Math.round(v))} />
 
         {/* Gender */}
         <Text className="font-semibold mt-6">Show Me</Text>

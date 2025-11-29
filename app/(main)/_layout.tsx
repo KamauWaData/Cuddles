@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
   return (
+    
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: "#FF3366",
@@ -11,7 +12,7 @@ export default function TabsLayout() {
           backgroundColor: "#fff",
           borderTopWidth: 0,
           height: 60,
-          marginBottom: 10,
+          marginBottom: 18,
           borderRadius: 10,
           marginHorizontal: 5
           
@@ -28,8 +29,8 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="ScheduledDatesScreen"
+        <Tabs.Screen
+          name="ScheduledDates"
         options={{
           title: "Schedule",
           tabBarIcon: ({ color, size }) => (

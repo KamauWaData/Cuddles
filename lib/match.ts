@@ -1,99 +1,139 @@
-// lib/match.ts
 import { supabase } from "./supabase";
 
 /**
- * likeProfile
- * - inserts a like
- * - checks mutual like
- * - creates a match row if mutual (ordered user ids to avoid duplicates)
- * - creates a conversation row for the match
- *
- * Returns { matched: boolean, conversationId?: string }
+ * Insert a like (normal or superlike) and handle match creation.
+ * Returns:
+ *  { matched: boolean, matchId?: string, conversationId?: string, createdLike?: any }
  */
-export async function likeProfile(currentId: string, targetId: string) {
-  try {
-    // ignore duplicate constraint error
-    await supabase
-      .from("likes")
-      .insert({ user_id: currentId, liked_id: targetId })
-      .select();
 
-    // check for mutual
-    const { data: mutual } = await supabase
-      .from("likes")
-      .select("*")
-      .eq("user_id", targetId)
-      .eq("liked_id", currentId)
-      .single();
+export async function likeProfile(currentId: string, targetId: string, opts?: { superlike?: boolean}) {
+    try {
+      // Insert the like (ignore unique constraint errors)
+      const payload: any = {
+        user_id: currentId,
+        liked_id: targetId,
+        superlike: !!opts?.superlike,
+        liked_at: new Date().toISOString(),
+      };
 
-    if (!mutual) return { matched: false };
+      // upsert to avoid duplicates (if you prefer strict insert, change to insert)
+      await supabase.from("likes").upsert(payload, { onConflict: ["user_id", "liked_id"] });
 
-    // create match if not exists (store ordered ids: smaller first)
-    const [a, b] = [currentId, targetId].sort();
-    const { data: existing } = await supabase
-      .from("matches")
-      .select("id")
-      .or(`(user_a.eq.${a},user_b.eq.${b})`)
-      .maybeSingle();
-
-    let matchId = existing?.id;
-    if (!matchId) {
-      const { data: inserted, error: insertErr } = await supabase
-        .from("matches")
-        .insert({ user_a: a, user_b: b })
-        .select()
-        .single();
-      if (insertErr) {
-        // ignore duplicate error
-        console.warn("match insert err", insertErr);
-      } else {
-        matchId = inserted?.id;
-      }
-    }
-
-    if (!matchId) {
-      // fetch possibly created row
-      const { data: matchRow } = await supabase
-        .from("matches")
-        .select("id")
-        .or(`(user_a.eq.${a},user_b.eq.${b})`)
-        .single();
-      matchId = matchRow?.id;
-    }
-
-    // create conversation for the match (if none)
-    let conversationId: string | null = null;
-    if (matchId) {
-      // check existing conversation
-      const { data: conv } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("match_id", matchId)
+      // check for mutual like (target liked current)
+      const { data: mutual, error: mutualErr } = await supabase
+        .from("likes")
+        .select("*")
+        .eq("user_id", targetId)
         .maybeSingle();
 
-      if (conv?.id) {
-        conversationId = conv.id;
-      } else {
-        const { data: newConv } = await supabase
-          .from("conversations")
-          .insert({ match_id: matchId })
-          .select()
-          .single();
-        conversationId = newConv?.id ?? null;
+      if (mutualErr) {
+        console.warn("mutual check error", mutualErr);
       }
-    }
 
-    return { matched: true, conversationId };
+      if (!mutual) {
+        // not a match yet
+        // optionally return the created like info
+        const { data: createdLike } = await supabase
+          .from("likes")
+          .select("*")
+          .eq("user_id", currentId)
+          .eq("liked_id", targetId)
+          .maybeSingle();
+
+        return { matched: false, createdLike };
+      }
+
+      // It's mutual => create a match entry (no duplicates)
+      const [a, b] = [currentId, targetId].sort();
+      // try to fetch existing match
+      const { data: existing, error: existingErr} = await supabase
+        .from("matches")
+        .select("id")
+        .or(`user_a.eq.${a}, user_b.eq.${b}`)
+        .maybeSingle();
+
+        if(existingErr) {
+          console.warn("existing match check error", existingErr);
+        }
+
+        let matchId = existing?.id;
+
+        if (!matchId) {
+          const { data: inserted, error: insertErr } = await supabase
+            .from("matches")
+            .insert({ user_a:a, user_b:b })
+            .select()
+            .single();
+
+          if(insertErr) {
+            console.warn("match insert error", insertErr);
+          } else {
+            matchId = inserted?.id;
+          }
+        }
+
+        // ensure conversation exists for this match
+        let conversationId: string | null = null;
+        if (matchId) {
+          const { data: conv, error: convErr } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("match_id", matchId)
+            .maybeSingle();
+
+          if (convErr) {
+            console.warn("conversations check error", convErr);
+          }
+
+          if (convErr) {
+            console.warn("conversation check error", convErr);
+          }
+
+          if (conv?.id) {
+            conversationId = conv.id;
+          } else {
+            const { data: newConv, error: newConvErr } = await supabase
+              .from("conversations")
+              .insert({ match_id: matchId})
+              .select()
+              .single();
+            if (newConvErr) {
+              console.warn("create conv error", newConvErr);
+            } else {
+              conversationId = newConv?.id ?? null;
+            }
+          }
+        }
+
+        return { matched: true, matchId, conversationId }
+    } catch (err) {
+      console.error("likedProfile error", err);
+      return { matched: false };
+    }
+}
+
+/** Remove a like (dislike/pass) */
+export async function unlikeProfile(currentId: string, targetId: string) {
+  try {
+    const { error } = await supabase
+      .from("likes")
+      .delete()
+      .eq("user_id", currentId)
+      .eq("liked_id", targetId);
+
+      return { error: error ?? null };
   } catch (err) {
-    console.error("likeProfile error", err);
-    return { matched: false };
+    console.error("unlikeProfile error", err);
+    return { error: err };
   }
 }
 
-/**
- * unlikeProfile - remove a like
- */
-export async function unlikeProfile(currentId: string, targetId: string) {
-  const { error } = await supabase.from("likes").delete().eq("user_id", currentId).eq("liked_id", targetId);
-  return { error };
+export async function getLikesForUser(userId: string) {
+  const { data, error } = await supabase
+    .from("likes")
+    .select("user_id, liked_id, superlike, liked_at")
+    .or(`user_id.eq.${userId}, liked_id.eq.${userId}`);
+
+  return { data, error };
+  
 }

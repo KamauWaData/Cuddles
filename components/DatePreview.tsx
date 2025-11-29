@@ -1,7 +1,24 @@
+import React from "react";
 import { View, Text, Image } from "react-native";
 
-export default function DatePreview({ title, description, location, date, imageUrl }) {
+type DatePreviewProps = {
+  title?: string;
+  description?: string;
+  location?: string;
+  date?: Date | string | null;
+  imageUrl?: string;
+};
+
+export default function DatePreview({
+  title,
+  description,
+  location,
+  date,
+  imageUrl,
+}: DatePreviewProps) {
   if (!title && !description && !location && !imageUrl) return null;
+
+  const dateObj = typeof date === "string" ? new Date(date) : date;
 
   return (
     <View className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -21,7 +38,7 @@ export default function DatePreview({ title, description, location, date, imageU
 
       <Text className="mt-2 text-pink-500 font-medium">{location}</Text>
 
-      <Text className="mt-1 text-gray-700">{date?.toLocaleString()}</Text>
+      <Text className="mt-1 text-gray-700">{dateObj ? dateObj.toLocaleString() : ""}</Text>
     </View>
   );
 }

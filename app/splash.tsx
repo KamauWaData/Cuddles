@@ -23,7 +23,7 @@ export default function SplashScreen() {
   return (
     <View className="flex-1 bg-pink-100 justify-center items-center">
       <Image
-        source={require("../assets/icon.png")}
+        source={require("../assets/cuddles.png")}
         className="w-32 h-32 mb-6"
         resizeMode="contain"
       />

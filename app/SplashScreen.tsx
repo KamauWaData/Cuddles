@@ -1,5 +1,5 @@
 // app/onboarding.tsx
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -15,9 +15,8 @@ export default function Onboarding() {
   return (
     <View className="flex-1 justify-between items-center bg-pink-500 px-6 py-10">
       {/* Top Images */}
-      <View className="w-full items-center mt-10">
-        <Ionicons name="person-circle-outline" size={100} color="#fce7f3" />
-        <Ionicons name="person-circle-outline" size={100} color="#fce7f3" />
+      <View className="w-full items-center mt-10 mb-20">
+        <Image source={require('../assets/cuddles.png')} />
       </View>
 
       {/* Welcome Text */}

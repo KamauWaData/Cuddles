@@ -34,11 +34,16 @@ export default function UserProfileScreen() {
     router.back();
   };
 
-   const handleReport = async () => {
-      // simple prompt: ask user for reason or send default
-      await reportUser(me, profile.id, "Inappropriate behaviour");
-      Alert.alert("Reported", "Thanks for flagging. We'll review this user.");
-    };
+ const handleReport = async () => {
+    // simple prompt: ask user for reason or send default
+    // get current user id (same pattern as handleBlock)
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth?.user?.id;
+    if (!me) { Alert.alert("Sign in"); return; }
+    // simple prompt: ask user for reason or send default
+    await reportUser(me, profile.id, "Inappropriate behaviour");
+    Alert.alert("Reported", "Thanks for flagging. We'll review this user.");
+  };
   return (
     <ScrollView className="flex-1 bg-white">
 
@@ -65,11 +70,11 @@ export default function UserProfileScreen() {
 
       <View className="px-6 mt-6">
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleBlock}>
           <Text className="text-red">Block</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleReport}>
           <Text className="text-black">Report</Text>
         </TouchableOpacity>
 

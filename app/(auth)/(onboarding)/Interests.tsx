@@ -10,6 +10,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import SkipButton from "../../../components/onboarding/SkipButton";
+import { useSession } from "../../../lib/useSession";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const INTEREST_OPTIONS = [
   "Sports", "Music", "Travel", "Movies", "Books", "Fitness", "Cooking", "Art",
@@ -22,6 +24,10 @@ const INTEREST_OPTIONS = [
 export default function Interests() {
   const router = useRouter();
   const { uid, profile } = useLocalSearchParams<{ uid: string; profile: string }>();
+  const { session } = useSession();
+
+  // Prefer route param `uid`, fall back to authenticated session user id
+  const effectiveUid = (uid as string | undefined) ?? session?.user?.id;
 
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -49,6 +55,12 @@ export default function Interests() {
 
     try {
       const parsedProfile = profile ? JSON.parse(profile) : {};
+
+      if (!effectiveUid) {
+        Alert.alert("Missing user", "Unable to determine user id. Please sign in again.");
+        return;
+      }
+
       const userProfile = {
         ...parsedProfile,
         interests: selected,
@@ -56,9 +68,7 @@ export default function Interests() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({ id: uid, ...userProfile });
+      const { error } = await supabase.from("profiles").upsert({ id: effectiveUid, ...userProfile });
 
       if (error) {
         console.error("Supabase error:", error);
@@ -75,14 +85,17 @@ export default function Interests() {
 
   const handleSkip = async () => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: uid,
-          interests: [],
-          profile_complete: false,
-          updated_at: new Date().toISOString(),
-        });
+      if (!effectiveUid) {
+        Alert.alert("Missing user", "Unable to determine user id. Please sign in again.");
+        return;
+      }
+
+      const { error } = await supabase.from("profiles").upsert({
+        id: effectiveUid,
+        interests: [],
+        profile_complete: false,
+        updated_at: new Date().toISOString(),
+      });
 
       if (error) {
         console.error("Supabase skip error:", error);
@@ -98,8 +111,13 @@ export default function Interests() {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="flex-row justify-between items-center mb-4">
+    <SafeAreaView className="flex-1 bg-white">
+  
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="flex-row justify-between items-center mb-4">
         <TouchableOpacity onPress={() => router.back()} className="px-2 py-1">
           <Text className="text-pink-500">Back</Text>
         </TouchableOpacity>
@@ -108,11 +126,6 @@ export default function Interests() {
 
         <SkipButton to="/(main)/home" onSkip={handleSkip} />
       </View>
-
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-      >
         {/* Progress indicator */}
         <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
           <View className="h-full bg-pink-500 w-5/5" />
@@ -171,6 +184,6 @@ export default function Interests() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

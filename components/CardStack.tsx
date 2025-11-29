@@ -28,7 +28,7 @@ export default function CardStack({ items = [], onSwipe }: { items: any[], onSwi
   const top = items.slice(index, index + 3);
 
   return (
-    <View style={{ width: SCREEN_W, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: SCREEN_W * 0.8, alignItems: "center", justifyContent: "center", marginTop: -20, }}>
       {top.reverse().map((item, idx) => (
         <StackedCard
           key={item.id}
@@ -76,13 +76,13 @@ function StackedCard({ item, position, onSwipe }: { item:any, position:number, o
   }));
 
   const baseStyle = {
-    width: SCREEN_W * 0.88,
+    width: SCREEN_W * 0.8,
     height: SCREEN_W * 1.05,
     borderRadius: 18,
-    overflow: "hidden",
+    overflow: "hidden" as "hidden",
     position: "absolute",
-    alignItems: "flex-start",
-    justifyContent: "flex-end",
+    alignItems: "flex-start" as const,
+    justifyContent: "flex-end" as const,
     backgroundColor: "#fff",
   };
 

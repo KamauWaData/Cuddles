@@ -2,9 +2,9 @@
 import SwipeCard from "../../components/SwipeCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import { likeProfile, dislikeProfile, superLikeProfile } from "../../lib/match";
+import { likeProfile, unlikeProfile } from "../../lib/match";
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator, Image } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 import { boundingBox, haversineKm } from "../../lib/geo";
@@ -26,13 +26,12 @@ export default function HomeScreen() {
   
   const genderFilter = gender? JSON.parse(gender as string) : ["Man", "Woman"];
 
-  const { data, error } = await supabase.rpc("search_profiles", {
-    p_user_id: userProfile.id,
-    p_min_age: Number(minAge) || 18,
-    p_max_age: Number(maxAge) || 99,
-    p_gender_filter: genderFilter,
-    p_distance_km: Number(distance) || 50,
-  });
+  const [matchedUser, setMatchedUser] = useState<any | null>(null);
+  const [matchConversationId, setMatchConversationId] = useState<string | null>(null);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+
+  const currentProfile = candidates[0] ?? null;
+  const onNext = () => setCandidates((prev) => prev.slice(1));
 
   useEffect(() => {
     mountedRef.current = true;
@@ -117,7 +116,7 @@ export default function HomeScreen() {
       const myId = await getMyId();
       if (!myId) return;
 
-      await dislikeProfile(myId, targetId); // Your backend RPC
+      await unlikeProfile(myId, targetId); // use unlikeProfile from lib/match
       onNext(); // move to next card
     }
 
@@ -140,7 +139,8 @@ export default function HomeScreen() {
       const myId = await getMyId();
       if (!myId) return;
 
-      const { matched, conversationId } = await superLikeProfile(myId, targetId);
+      // use likeProfile with superlike option
+      const { matched, conversationId } = await likeProfile(myId, targetId, { superlike: true });
 
       onNext(); 
 
@@ -220,65 +220,102 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-pink-100">
       {/* header controls */}
-      <View className="flex-row items-center justify-between p-4">
-        <Text className="text-xl font-bold">Discover</Text>
+      <View className="flex-row items-center justify-between p-4 ">
         <View style={{ flexDirection: "row", gap: 12 }}>
-          <TouchableOpacity onPress={() => fetchMyProfileAndCandidates()}>
+          
+        </View>
+      </View>
+      {/* Top row: left icon and grouped right icons */}
+      <View className="flex-row items-center justify-between px-6 mt-[-15]">
+        {/* left-aligned */}
+        <TouchableOpacity className="rounded-full bg-white shadow p-3"
+          onPress={() => router.push("/(screens)/MyProfile")}
+        >
+          <Image
+            source={{ uri: userProfile?.avatar_url || `${supabase.storage.from('avatars').getPublicUrl(userProfile?.id).data.publicUrl}` }}
+            style={{ width: 24, height: 24, borderRadius: 12 }}
+          />
+        </TouchableOpacity>
+
+        {/* right-aligned group */}
+        <View className="flex-row items-center gap-4">
+          <TouchableOpacity className="rounded-full bg-white shadow p-3">
+            <Icon name="heart-outline" size={24} color="#0c0c0cff" onPress={() => router.push('(screens)/filters')}/>
+          </TouchableOpacity>
+          <TouchableOpacity className="rounded-full bg-white shadow p-3"
+            onPress={() => router.push("/(screens)/Filters")}
+          >
+            <Icon name="filter-outline" size={24} color="#0e0d0dff" onPress={() => router.push('(screens)/filters')}/>
+          </TouchableOpacity>
+          <TouchableOpacity className="rounded-full bg-white shadow p-3" onPress={() => fetchMyProfileAndCandidates()}>
             <Icon name="refresh-outline" size={22} color="#444" />
           </TouchableOpacity>
         </View>
       </View>
-      {/* Top row: left icon and grouped right icons */}
-      <View className="flex-row items-center justify-between px-6 mt-6">
-        {/* left-aligned */}
-        <TouchableOpacity className="rounded-full bg-white shadow p-3">
-          <Icon name="person-outline" size={24} color="#FF3366" />
-        </TouchableOpacity>
 
-        {/* right-aligned group */}
-          <View className="flex-row items-center space-x-3 ">
-            <TouchableOpacity className="rounded-full bg-white shadow p-3">
-              <Icon name="heart-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
-            </TouchableOpacity>
-            <TouchableOpacity className="rounded-full bg-white shadow p-3"
-              onPress={() => router.push("/(screens)/Filters")}
+        {/* card stack */}
+        <View style={{
+                width: SCREEN_W * 0.9,
+                height: 380,
+                backgroundColor: "white",
+                borderRadius: 28,
+                marginVertical: 55,
+                paddingTop: 20,
+                paddingBottom: 20,
+                shadowColor: "#000",
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                elevation: 8,
+                alignItems: "center",
+                alignSelf: "center",
+                justifyContent: "center",
+              }}>
+          <View
+              style={{
+                width: SCREEN_W * 0.9,
+                height: 310,
+                backgroundColor: "white",
+                borderRadius: 28,
+                paddingTop: 20,
+                paddingBottom: 20,
+                shadowColor: "#000",
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                elevation: 8,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Icon name="filter-outline" size={24} color="#FF3366" onPress={() => router.push('(screens)/filters')}/>
+              <CardStack items={candidates} onSwipe={onSwipe} />
+            </View>
+
+          {/* bottom nav / actions */}
+          <View className="flex-row justify-center items-center mb-10 gap-6 mt-5">
+            {/* Dislike */}
+            <TouchableOpacity
+              className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
+              onPress={() => currentProfile && handleDislike(currentProfile.id)}
+            >
+              <Icon name="close" size={28} color="#FF3366" />
+            </TouchableOpacity>
+
+            {/* Super Like */}
+            <TouchableOpacity
+              className="bg-white w-16 h-16 rounded-full shadow items-center justify-center"
+              onPress={() => currentProfile && handleSuperLike(currentProfile.id)}
+            >
+              <Icon name="star" size={32} color="#FF3366" />
+            </TouchableOpacity>
+
+            {/* Like */}
+            <TouchableOpacity
+              className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
+              onPress={() => currentProfile && handleLike(currentProfile.id)}
+            >
+              <Icon name="heart" size={28} color="#FF3366" />
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* card stack */}
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <CardStack items={candidates} onSwipe={onSwipe} />
-        </View>
-
-        {/* bottom nav / actions */}
-        <View className="flex-row justify-center items-center mb-10 space-x-6">
-        {/* Dislike */}
-        <TouchableOpacity
-          className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
-          onPress={() => handleDislike(currentProfile.id)}
-        >
-          <Icon name="close" size={28} color="#FF3366" />
-        </TouchableOpacity>
-
-        {/* Super Like */}
-        <TouchableOpacity
-          className="bg-white w-16 h-16 rounded-full shadow items-center justify-center"
-          onPress={() => handleSuperLike(currentProfile.id)}
-        >
-          <Icon name="star" size={32} color="#FF3366" />
-        </TouchableOpacity>
-
-        {/* Like */}
-        <TouchableOpacity
-          className="bg-white w-14 h-14 rounded-full shadow items-center justify-center"
-          onPress={() => handleLike(currentProfile.id)}
-        >
-          <Icon name="heart" size={28} color="#FF3366" />
-        </TouchableOpacity>
-      </View>
 
     </SafeAreaView>
   );

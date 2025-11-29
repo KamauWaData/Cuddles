@@ -22,6 +22,7 @@ export default function TextInputField({
         secureTextEntry={secureTextEntry}
         value={value}
         onChangeText={onChangeText}
+        autoCapitalize='none'
       />
     </View>
   );

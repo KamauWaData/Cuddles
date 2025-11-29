@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Slider } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 
 export default function FiltersDrawer({ onApply }: { onApply: (filters:any) => void }) {
   const [distance, setDistance] = useState(50);

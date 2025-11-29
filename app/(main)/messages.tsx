@@ -20,7 +20,9 @@ export default function ChatList() {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchConversations = async () => {
