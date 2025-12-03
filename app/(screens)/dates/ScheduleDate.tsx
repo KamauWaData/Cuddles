@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -16,6 +17,9 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../../lib/supabase";
 import * as Location from "expo-location";
 import DatePreview from "../../../components/DatePreview";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 
 type Params = {
@@ -245,83 +249,103 @@ export default function ScheduleDate() {
 
   return (
     <ScrollView className="flex-1 bg-white p-6" keyboardShouldPersistTaps="handled">
-      <Text className="text-2xl font-bold mb-4">{id ? "Edit Date" : "Schedule a Date"}</Text>
-
-      {/* Image picker & preview */}
-      <TouchableOpacity onPress={pickAndUploadImage} className="mb-4">
-        {localImageUri ? (
-          <Image source={{ uri: localImageUri }} style={{ width: "100%", height: 200, borderRadius: 12 }} />
-        ) : imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 200, borderRadius: 12 }} />
-        ) : (
-          <View className="w-full h-48 bg-gray-100 rounded items-center justify-center">
-            <Text className="text-gray-500">Add an image for the date (optional)</Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={28} color="#FF3366" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{id ? "Edit Date" : "Schedule a Date"}</Text>
+            <View style={styles.headerSpacer} />
           </View>
-        )}
-      </TouchableOpacity>
 
-      {imageUrl || localImageUri ? (
-        <View className="flex-row items-center justify-between mb-4">
-          <TouchableOpacity onPress={removeImage} className="px-3 py-2 bg-red-100 rounded">
-            <Text className="text-red-600">Remove image</Text>
+          {/* Image Section */}
+          <TouchableOpacity onPress={pickAndUploadImage} style={styles.imageSection}>
+            {localImageUri || imageUrl ? (
+              <Image source={{ uri: localImageUri || imageUrl }} style={styles.dateImage} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="image-outline" size={48} color="#FF3366" />
+                <Text style={styles.placeholderText}>Add a photo</Text>
+              </View>
+            )}
           </TouchableOpacity>
-        </View>
-      ) : null}
 
-      {/* Title */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Title</Text>
-      <TextInput
-        placeholder="e.g. Sunset picnic at the pier"
-        value={title}
-        onChangeText={setTitle}
-        className="border border-gray-200 rounded p-3 mb-4"
-      />
+          {(imageUrl || localImageUri) && (
+            <TouchableOpacity onPress={removeImage} style={styles.removeImageButton}>
+              <Ionicons name="close-circle" size={20} color="#DC2626" />
+              <Text style={styles.removeImageText}>Remove image</Text>
+            </TouchableOpacity>
+          )}
 
-      {/* Location */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Location</Text>
-      <TextInput
-        placeholder="e.g. The Pier, West Bay"
-        value={location}
-        onChangeText={setLocation}
-        className="border border-gray-200 rounded p-3 mb-4"
-      />
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            {/* Title */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Date Title</Text>
+              <TextInput
+                placeholder="e.g. Sunset picnic at the pier"
+                value={title}
+                onChangeText={setTitle}
+                style={styles.input}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      <TouchableOpacity
-        onPress={getLocation}
-        className="bg-blue-100 border border-blue-300 p-3 rounded mb-3"
-      >
-        <Text className="text-blue-700 font-medium">
-          Auto-detect my location for this date
-        </Text>
-      </TouchableOpacity>
+            {/* Location */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Location</Text>
+              <TextInput
+                placeholder="e.g. The Pier, West Bay"
+                value={location}
+                onChangeText={setLocation}
+                style={styles.input}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      {lat && lng ? (
-        <Text className="text-gray-600 mb-4">
-          Location detected: {lat.toFixed(5)}, {lng.toFixed(5)}
-        </Text>
-      ) : null}
+            <TouchableOpacity
+              onPress={getLocation}
+              style={styles.autoDetectButton}
+            >
+              <Ionicons name="locate" size={18} color="#FFFFFF" />
+              <Text style={styles.autoDetectText}>Auto-detect location</Text>
+            </TouchableOpacity>
 
+            {lat && lng && (
+              <View style={styles.locationDetectedBox}>
+                <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                <Text style={styles.detectedText}>
+                  Location detected: {lat.toFixed(5)}, {lng.toFixed(5)}
+                </Text>
+              </View>
+            )}
 
-      {/* Description */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Description (optional)</Text>
-      <TextInput
-        placeholder="Add more details, what to bring, dress code..."
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={4}
-        className="border border-gray-200 rounded p-3 mb-4 text-gray-700"
-        style={{ minHeight: 96, textAlignVertical: "top" }}
-      />
+            {/* Description */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description (optional)</Text>
+              <TextInput
+                placeholder="Add more details, what to bring, dress code..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                style={[styles.input, styles.textArea]}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      {/* Date & time */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Date & time</Text>
-      <TouchableOpacity
-        onPress={() => setShowPicker(true)}
-        className="border border-gray-200 rounded p-3 mb-3"
-      >
-        <Text>{date ? date.toLocaleString() : "Pick date & time"}</Text>
-      </TouchableOpacity>
+            {/* Date & Time */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Date & Time</Text>
+              <TouchableOpacity
+                onPress={() => setShowPicker(true)}
+                style={styles.dateInput}
+              >
+                <Ionicons name="calendar" size={20} color="#FF3366" />
+                <Text style={styles.dateInputText}>{date ? date.toLocaleString() : "Pick date & time"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
       {showPicker && (
         <DateTimePicker
