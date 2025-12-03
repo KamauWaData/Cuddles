@@ -23,12 +23,30 @@ lib/                   - Utilities and helpers (Supabase client, location, etc.)
 assets/                - Images and static files
 ```
 
-## Recent Setup (December 3, 2025)
+## Recent Updates (December 3, 2025)
+
+### Initial Setup
 - Configured for Replit environment with Expo web server on port 5000
 - Fixed babel configuration (removed deprecated expo-router/babel plugin)
 - Fixed missing default exports in route files (Likes.tsx, match.tsx)
 - Added missing React imports (useState, useEffect)
 - Configured deployment for static build to `web-build` directory
+
+### UI/UX Overhaul (December 3, 2025)
+- **New Color Scheme**: Implemented cohesive pink/coral dating app theme
+  - Primary: #FF3366 (Coral Pink)
+  - Secondary gradients and accent colors throughout
+  - Consistent color palette in tailwind.config.js
+- **Enhanced Components**:
+  - PrimaryButton: Gradient styling, loading states, multiple variants (primary, secondary, outline)
+  - TextInputField: Focus states, left/right icons, password visibility toggle, error states
+  - BrandedLoading: Animated hearts logo with pulsing effect
+  - SwipeCard: Enhanced overlays, gradient info section, interest tags
+- **Redesigned Screens**:
+  - Login/Register: Modern layout with branding, visual hierarchy, form validation
+  - Home: Better header design, card container, gradient action buttons
+  - Tab Bar: Modern floating design with active state indicators
+- **Fixed Routing**: Corrected case-sensitive route names (Login vs login)
 
 ## Development
 
