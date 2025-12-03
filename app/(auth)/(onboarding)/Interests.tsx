@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../../../lib/supabase";
 import SkipButton from "../../../components/onboarding/SkipButton";
 import { useSession } from "../../../lib/useSession";
