@@ -138,8 +138,8 @@ export default function Interests() {
           <SkipButton to="/(main)/home" onSkip={handleSkip} />
         </View>
         {/* Progress indicator */}
-        <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
-          <View className="h-full bg-pink-500 w-5/5" />
+        <View className="w-full h-1 bg-gray-200 mb-10 rounded-full overflow-hidden">
+          <View className="h-full bg-pink-500 w-full" />
         </View>
 
         <Text className="text-2xl font-bold mb-2">Your Interests</Text>
