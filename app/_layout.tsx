@@ -13,7 +13,7 @@ export default function RootLayout() {
 
     const onboarded = (session as any)?.user?.user_metadata?.onboarded;
     const target = !session
-      ? "/(auth)/login"
+      ? "/(auth)/Login"
       : !onboarded
       ? "/(auth)/(onboarding)/ProfileName"
       : null;

@@ -14,7 +14,7 @@ export default function Index() {
       const session = data.session;
 
       if (!session) {
-        router.replace("/(auth)/login");
+        router.replace("/(auth)/Login");
         return;
       }
 
@@ -26,9 +26,9 @@ export default function Index() {
         .single();
 
         if (!profile?.profile_complete) {
-          router.replace("/(onboarding)/ProfileName") //change this later if needed
+          router.replace("/(auth)/(onboarding)/ProfileName");
         } else {
-          router.replace("/(main)/home");
+          router.replace("/(main)/Home");
         }
     })();
   }, []);
