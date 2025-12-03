@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useSession } from "../../lib/useSession";
 import { supabase } from "../../lib/supabase";
@@ -7,6 +7,8 @@ import BrandedLoading from "../../components/BrandedLoading";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/build/Feather";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 // Set your storage bucket name (change if different)
 const AVATAR_BUCKET = "avatars";
@@ -102,33 +104,47 @@ export default function MyProfile() {
 
   if (loading)
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <BrandedLoading message="Loading profile..." />
-      </View>
+      <LinearGradient colors={["#FFF0F5", "#FFFFFF"]} style={styles.container}>
+        <View style={styles.centerContent}>
+          <BrandedLoading message="Loading profile..." />
+        </View>
+      </LinearGradient>
     );
 
   if (!profile) {
     return (
-      <View className="flex-1 items-center justify-center bg-white p-6">
-        <Text className="text-gray-700">
-          {fetchError ?? "No profile found."}
-        </Text>
-        <View className="flex-row mt-4 space-x-3">
-          <TouchableOpacity
-            className="bg-pink-500 px-4 py-2 rounded"
-            onPress={() => router.push("/(main)/EditProfile")}
-          >
-            <Text className="text-white">Create / Edit</Text>
-          </TouchableOpacity>
+      <LinearGradient colors={["#FFF0F5", "#FFFFFF"]} style={styles.container}>
+        <View style={styles.centerContent}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="person-outline" size={48} color="#FF3366" />
+          </View>
+          <Text style={styles.emptyTitle}>{fetchError ?? "No profile found"}</Text>
+          <View style={styles.emptyButtonRow}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push("/(screens)/profile/EditProfile")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#ff69b4", "#ff1493"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.primaryButtonText}>Create Profile</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            className="border border-gray-300 px-4 py-2 rounded"
-            onPress={fetchProfile}
-          >
-            <Text className="text-gray-700">Retry</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={fetchProfile}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -154,82 +170,449 @@ export default function MyProfile() {
   const age = computeAge(profile.birthday);
 
   return (
-    <SafeAreaView className="flex-1 bg-pink-100">
-    
-      {/* Avatar */}
-      <View className="items-center mt-6 w-11/12 h-60 rounded-2xl overflow-hidden self-center">
-        {avatarUrl ? (
-          <Image
-            source={{ uri: avatarUrl }}
-            className="w-full h-60 rounded-2xl"
-          />
-        ) : (
-          <View className="w-full h-60 bg-gray-200 rounded-2xl" />
-        )}
-      </View>
-
-      {/* Info Row */}
-      <View className="flex-row items-center justify-between px-5 mt-5">
-        <View className="flex-row items-center space-x-2">
-          <Text className="text-2xl font-bold">
-            {displayName}
-            {age ? `, ${age}` : ""}
-          </Text>
-          <Text className="text-gray-500">{profile.location ?? ""}</Text>
+    <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
+      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={28} color="#FF3366" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Profile</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* RIGHT: Edit + Settings */}
-        <View className="flex-row items-center space-x-5">
-          <TouchableOpacity onPress={() =>
-            router.push({
-              pathname: "/(screens)/profile/EditProfile",
-              params: { data: JSON.stringify(profile) },
-            })
-          }>
-            <Feather name="edit-3" size={24} color="black" />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => router.push("/(screens)/settings")}>
-            <Feather name="settings" size={24} color="black" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* About */}
-      <View className="mt-4 px-6">
-        <Text className="font-bold text-lg mb-2">About</Text>
-        <Text className="text-gray-600">{profile.about}</Text>
-      </View>
-
-      {/* Interests */}
-      <View className="mt-6 px-6">
-        <Text className="font-bold text-lg mb-2">Interests</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {profile.interests?.map((i) => (
-            <View
-              key={i}
-              className="bg-pink-200 px-3 py-1 rounded-full"
-            >
-              <Text className="text-pink-700">{i}</Text>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={64} color="#FF3366" />
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.editAvatarButton}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(screens)/profile/EditProfile",
+                    params: { data: JSON.stringify(profile) },
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <View style={styles.editAvatarIcon}>
+                  <Ionicons name="camera" size={16} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
             </View>
-          ))}
-        </View>
-      </View>
 
-      {/* Gallery */}
-      <View className="mt-6 px-6 mb-20">
-        <Text className="font-bold text-lg mb-2">Gallery</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {profile.gallery?.map((pic) => (
-            <Image
-              key={pic}
-              source={{ uri: pic }}
-              className="w-[30%] h-32 rounded-xl"
-            />
-          ))}
-        </View>
-      </View>
-    
-    </SafeAreaView>
+            {/* Name and Basic Info */}
+            <Text style={styles.profileName}>
+              {displayName}
+              {age ? `, ${age}` : ""}
+            </Text>
+            {profile.location && (
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={16} color="#FF3366" />
+                <Text style={styles.locationText}>{profile.location}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/(screens)/profile/EditProfile",
+                  params: { data: JSON.stringify(profile) },
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#ff69b4", "#ff1493"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.actionButtonText}>Edit</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/(screens)/settings")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.settingsButton}>
+                <Ionicons name="settings-outline" size={20} color="#FF3366" />
+                <Text style={styles.settingsButtonText}>Settings</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* About Section */}
+          {profile.about && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="information-circle-outline" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>About</Text>
+              </View>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionContent}>{profile.about}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Interests Section */}
+          {profile.interests && profile.interests.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="sparkles" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>Interests</Text>
+              </View>
+              <View style={styles.interestsGrid}>
+                {profile.interests.map((interest) => (
+                  <View key={interest} style={styles.interestChip}>
+                    <Text style={styles.interestText}>{interest}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Gallery Section */}
+          {profile.gallery && profile.gallery.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="image-outline" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>Gallery</Text>
+              </View>
+              <View style={styles.galleryGrid}>
+                {profile.gallery.map((pic, index) => (
+                  <TouchableOpacity key={index} style={styles.galleryItem} activeOpacity={0.8}>
+                    <Image source={{ uri: pic }} style={styles.galleryImage} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Logout Section */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={async () => {
+                await supabase.auth.signOut();
+                router.replace("/(auth)/Login");
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.logoutButtonText}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#FFF0F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  emptyButtonRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  primaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#FF3366",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonGradient: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  secondaryButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#FFE4E6",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  secondaryButtonText: {
+    color: "#FF3366",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  avatarSection: {
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  avatarImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+  },
+  avatarPlaceholder: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#FFF0F5",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+  },
+  editAvatarButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+  },
+  editAvatarIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FF3366",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    shadowColor: "#FF3366",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  locationText: {
+    fontSize: 14,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  actionButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    height: 50,
+  },
+  actionButtonGradient: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    shadowColor: "#FF3366",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  actionButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  settingsButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#FFE4E6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  settingsButtonText: {
+    color: "#FF3366",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  sectionCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sectionContent: {
+    fontSize: 15,
+    color: "#6B7280",
+    lineHeight: 22,
+  },
+  interestsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  interestChip: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 2,
+    borderColor: "#FFE4E6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  interestText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FF3366",
+  },
+  galleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  galleryItem: {
+    width: "31%",
+    aspectRatio: 0.9,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+  },
+  logoutButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#FEE2E2",
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  logoutButtonText: {
+    color: "#DC2626",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+});
