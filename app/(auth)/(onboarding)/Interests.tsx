@@ -143,7 +143,7 @@ export default function Interests() {
         </View>
 
         <Text className="text-3xl font-bold text-gray-900 mb-2">What are your interests?</Text>
-        <Text className="text-gray-500 mb-6">
+        <Text className="text-gray-600 text-base mb-6">
           Choose what you love — we’ll use this to find better matches.
         </Text>
 
