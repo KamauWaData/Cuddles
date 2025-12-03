@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -16,32 +17,31 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../../lib/supabase";
 import * as Location from "expo-location";
 import DatePreview from "../../../components/DatePreview";
-
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 type Params = {
-  id?: string; // optional: when present we are editing an existing post
+  id?: string;
 };
 
 export default function ScheduleDate() {
   const { id } = useLocalSearchParams<Params>();
   const router = useRouter();
 
-  // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [imageUrl, setImageUrl] = useState<string>(""); // public url
-  const [localImageUri, setLocalImageUri] = useState<string | null>(null); // preview
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
 
-
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // fetch existing post if editing
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -74,7 +74,6 @@ export default function ScheduleDate() {
     })();
   }, [id]);
 
-  // pick image and upload to supabase storage
   const pickAndUploadImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -94,12 +93,9 @@ export default function ScheduleDate() {
       const asset = res.assets[0];
       setLocalImageUri(asset.uri);
 
-      // upload to Supabase Storage 'dates' bucket
-      // create a unique file path
       const ext = asset.uri.split(".").pop() ?? "jpg";
       const filename = `dates/${Date.now()}.${ext}`;
 
-      // fetch uri and convert to arrayBuffer (works in Expo)
       const response = await fetch(asset.uri);
       const arrayBuffer = await response.arrayBuffer();
 
@@ -129,15 +125,11 @@ export default function ScheduleDate() {
     }
   };
 
-  // remove image (both preview and remote) - remote removal optional; here we only remove from form
   const removeImage = async () => {
     setImageUrl("");
     setLocalImageUri(null);
-    // optionally delete file from storage if you want; requires keeping the file path
-    // supabase.storage.from('dates').remove(['dates/123.jpg'])
   };
 
-  // validation
   const validate = () => {
     if (!title.trim()) {
       Alert.alert("Validation", "Please enter a title for the date.");
@@ -154,32 +146,18 @@ export default function ScheduleDate() {
     return true;
   };
 
-  const payload = {
-      user_id: userId,
-      title: title.trim(),
-      description: description.trim() || null,
-      location: location.trim(),
-      image_url: imageUrl || null,
-      event_date: date.toISOString(),
-      is_active: true,
-      lat,
-      lng
-    };
-
   const getLocation = async () => {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Location Permission", "Please grant location access.");
-        return;
-      }
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Location Permission", "Please grant location access.");
+      return;
+    }
 
-      const loc = await Location.getCurrentPositionAsync({});
-      setLat(loc.coords.latitude);
-      setLng(loc.coords.longitude);
-    };
+    const loc = await Location.getCurrentPositionAsync({});
+    setLat(loc.coords.latitude);
+    setLng(loc.coords.longitude);
+  };
 
-
-  // create or update
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
@@ -204,7 +182,6 @@ export default function ScheduleDate() {
       };
 
       if (id) {
-        // update existing
         const { error } = await supabase.from("scheduled_dates").update(payload).eq("id", id);
         if (error) {
           console.error("update error", error);
@@ -214,7 +191,6 @@ export default function ScheduleDate() {
         }
         Alert.alert("Updated", "Date updated successfully.");
       } else {
-        // insert new
         const { error } = await supabase.from("scheduled_dates").insert([payload]);
         if (error) {
           console.error("insert error", error);
@@ -225,7 +201,6 @@ export default function ScheduleDate() {
         Alert.alert("Posted", "Date posted successfully.");
       }
 
-      // navigate back to MyDates (owner list) after save
       router.replace("/(main)/dates/MyDates");
     } catch (err: any) {
       console.error("save error", err);
@@ -237,126 +212,343 @@ export default function ScheduleDate() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#ec4899" />
-      </View>
+      <LinearGradient colors={["#FFF0F5", "#FFFFFF"]} style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#FF3366" />
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-white p-6" keyboardShouldPersistTaps="handled">
-      <Text className="text-2xl font-bold mb-4">{id ? "Edit Date" : "Schedule a Date"}</Text>
-
-      {/* Image picker & preview */}
-      <TouchableOpacity onPress={pickAndUploadImage} className="mb-4">
-        {localImageUri ? (
-          <Image source={{ uri: localImageUri }} style={{ width: "100%", height: 200, borderRadius: 12 }} />
-        ) : imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 200, borderRadius: 12 }} />
-        ) : (
-          <View className="w-full h-48 bg-gray-100 rounded items-center justify-center">
-            <Text className="text-gray-500">Add an image for the date (optional)</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {imageUrl || localImageUri ? (
-        <View className="flex-row items-center justify-between mb-4">
-          <TouchableOpacity onPress={removeImage} className="px-3 py-2 bg-red-100 rounded">
-            <Text className="text-red-600">Remove image</Text>
+    <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
+      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={28} color="#FF3366" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>{id ? "Edit Date" : "Schedule a Date"}</Text>
+          <View style={styles.headerSpacer} />
         </View>
-      ) : null}
 
-      {/* Title */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Title</Text>
-      <TextInput
-        placeholder="e.g. Sunset picnic at the pier"
-        value={title}
-        onChangeText={setTitle}
-        className="border border-gray-200 rounded p-3 mb-4"
-      />
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* Image Section */}
+          <TouchableOpacity onPress={pickAndUploadImage} style={styles.imageSection}>
+            {localImageUri || imageUrl ? (
+              <Image source={{ uri: localImageUri || imageUrl }} style={styles.dateImage} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="image-outline" size={48} color="#FF3366" />
+                <Text style={styles.placeholderText}>Add a photo</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-      {/* Location */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Location</Text>
-      <TextInput
-        placeholder="e.g. The Pier, West Bay"
-        value={location}
-        onChangeText={setLocation}
-        className="border border-gray-200 rounded p-3 mb-4"
-      />
+          {(imageUrl || localImageUri) && (
+            <TouchableOpacity onPress={removeImage} style={styles.removeImageButton}>
+              <Ionicons name="close-circle" size={20} color="#DC2626" />
+              <Text style={styles.removeImageText}>Remove image</Text>
+            </TouchableOpacity>
+          )}
 
-      <TouchableOpacity
-        onPress={getLocation}
-        className="bg-blue-100 border border-blue-300 p-3 rounded mb-3"
-      >
-        <Text className="text-blue-700 font-medium">
-          Auto-detect my location for this date
-        </Text>
-      </TouchableOpacity>
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            {/* Title */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Date Title</Text>
+              <TextInput
+                placeholder="e.g. Sunset picnic at the pier"
+                value={title}
+                onChangeText={setTitle}
+                style={styles.input}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      {lat && lng ? (
-        <Text className="text-gray-600 mb-4">
-          Location detected: {lat.toFixed(5)}, {lng.toFixed(5)}
-        </Text>
-      ) : null}
+            {/* Location */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Location</Text>
+              <TextInput
+                placeholder="e.g. The Pier, West Bay"
+                value={location}
+                onChangeText={setLocation}
+                style={styles.input}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
+            <TouchableOpacity onPress={getLocation} style={styles.autoDetectButton}>
+              <Ionicons name="locate" size={18} color="#FFFFFF" />
+              <Text style={styles.autoDetectText}>Auto-detect location</Text>
+            </TouchableOpacity>
 
-      {/* Description */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Description (optional)</Text>
-      <TextInput
-        placeholder="Add more details, what to bring, dress code..."
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={4}
-        className="border border-gray-200 rounded p-3 mb-4 text-gray-700"
-        style={{ minHeight: 96, textAlignVertical: "top" }}
-      />
+            {lat && lng && (
+              <View style={styles.locationDetectedBox}>
+                <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                <Text style={styles.detectedText}>
+                  Location detected: {lat.toFixed(5)}, {lng.toFixed(5)}
+                </Text>
+              </View>
+            )}
 
-      {/* Date & time */}
-      <Text className="text-sm font-medium text-gray-700 mb-1">Date & time</Text>
-      <TouchableOpacity
-        onPress={() => setShowPicker(true)}
-        className="border border-gray-200 rounded p-3 mb-3"
-      >
-        <Text>{date ? date.toLocaleString() : "Pick date & time"}</Text>
-      </TouchableOpacity>
+            {/* Description */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description (optional)</Text>
+              <TextInput
+                placeholder="Add more details, what to bring, dress code..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                style={[styles.input, styles.textArea]}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      {showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="datetime"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) => {
-            // on Android the picker returns once
-            if (Platform.OS !== "ios") setShowPicker(false);
-            if (selectedDate) setDate(selectedDate);
-          }}
-          minimumDate={new Date()} // no past dates
-        />
-      )}
+            {/* Date & Time */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Date & Time</Text>
+              <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.dateInput}>
+                <Ionicons name="calendar" size={20} color="#FF3366" />
+                <Text style={styles.dateInputText}>{date ? date.toLocaleString() : "Pick date & time"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      <DatePreview
-        title={title}
-        description={description}
-        location={location}
-        date={date}
-        imageUrl={localImageUri || imageUrl}
-      />
+          {showPicker && (
+            <DateTimePicker
+              value={date}
+              mode="datetime"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, selectedDate) => {
+                if (Platform.OS !== "ios") setShowPicker(false);
+                if (selectedDate) setDate(selectedDate);
+              }}
+              minimumDate={new Date()}
+            />
+          )}
 
-      {/* Save */}
-      <TouchableOpacity
-        onPress={handleSubmit}
-        className="bg-pink-500 p-4 rounded mt-6 mb-8 items-center justify-center"
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="text-white font-semibold">{id ? "Update Date" : "Post Date"}</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Preview */}
+          <View style={styles.previewSection}>
+            <Text style={styles.previewTitle}>Preview</Text>
+            <DatePreview
+              title={title}
+              description={description}
+              location={location}
+              date={date}
+              imageUrl={localImageUri || imageUrl}
+            />
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity onPress={handleSubmit} disabled={saving} activeOpacity={0.85} style={styles.submitButton}>
+            <LinearGradient colors={["#ff69b4", "#ff1493"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.buttonGradient}>
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>{id ? "Update Date" : "Post Date"}</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  imageSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: "hidden",
+    height: 220,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  dateImage: {
+    width: "100%",
+    height: "100%",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  placeholderText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  removeImageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+  },
+  removeImageText: {
+    color: "#DC2626",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  formCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#1F2937",
+    backgroundColor: "#F9FAFB",
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: "top",
+    paddingTop: 12,
+  },
+  autoDetectButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#3B82F6",
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  autoDetectText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  locationDetectedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#DCFCE7",
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  detectedText: {
+    color: "#166534",
+    fontWeight: "500",
+    fontSize: 13,
+    flex: 1,
+  },
+  dateInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F9FAFB",
+  },
+  dateInputText: {
+    fontSize: 15,
+    color: "#1F2937",
+    flex: 1,
+  },
+  previewSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  previewTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  submitButton: {
+    marginHorizontal: 16,
+    marginBottom: 32,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#FF3366",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonGradient: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 17,
+  },
+});
