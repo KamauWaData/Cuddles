@@ -144,7 +144,7 @@ export default function Interests() {
 
         <Text className="text-3xl font-bold text-gray-900 mb-2">What are your interests?</Text>
         <Text className="text-gray-600 text-base mb-6">
-          Choose what you love — we’ll use this to find better matches.
+          Pick at least 3 to help us find your perfect match — we’ll use this to find better matches.
         </Text>
 
         {/* Search bar */}
