@@ -153,95 +153,119 @@ export default function ProfileName() {
 
   return (
     <LinearGradient
-          colors={["#fff0f5", "#ffe4e1"]}
-          className="flex-1 p-6 justify-center"
-        >
-    <View className="flex-1 px-6 justify-center">
-      <View className="flex-row justify-between items-center mb-6">
-        <SkipButton
-          to="/(auth)/(onboarding)/Gender"
-          onSkip={async () => {
-            try {
-              await supabase.from("users").upsert({
-                id: uid,
-                name: null,
-                profile_complete: false,
-                updatedAt: new Date().toISOString(),
-              });
-              router.push("/(main)/home");
-            } catch (err) {
-              console.error("Skip upsert error:", err);
-            }
-          }}
-        />
-      </View>
-      {/* Progress indicator */}
-        <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
-          <View className="h-full bg-pink-500 w-2/5" />
-        </View> 
-
-      <Text className="text-xl items-center justify-center font-bold text-pink-500">Profile Basics</Text>
-      {/* Avatar */}
-      <TouchableOpacity
-        onPress={handleAvatarUpload}
-        className="self-center mb-6 mt-3"
-      >
-        {avatar ? (
-          <Image
-            source={{ uri: avatar }}
-            style={{ width: 150, height: 105, borderRadius: 48 }}
+      colors={["#fff0f5", "#ffe4e1"]}
+      className="flex-1 p-6 justify-between"
+    >
+      <View>
+        <View className="flex-row justify-between items-center mb-8">
+          <View className="w-8" />
+          <Text className="text-lg font-semibold text-gray-800">Step 1 of 3</Text>
+          <SkipButton
+            to="/(auth)/(onboarding)/Gender"
+            onSkip={async () => {
+              try {
+                await supabase.from("users").upsert({
+                  id: uid,
+                  name: null,
+                  profile_complete: false,
+                  updatedAt: new Date().toISOString(),
+                });
+                router.push("/(main)/home");
+              } catch (err) {
+                console.error("Skip upsert error:", err);
+              }
+            }}
           />
-        ) : (
-          <View className="w-24 h-24 rounded-full bg-gray-200 justify-center items-center">
-            <Text className="text-gray-600 text-sm">Add Photo</Text>
-          </View>
+        </View>
+
+        {/* Progress indicator */}
+        <View className="w-full h-1 bg-gray-200 mb-10 rounded-full overflow-hidden">
+          <View className="h-full bg-pink-500 w-1/3" />
+        </View>
+
+        <Text className="text-3xl font-bold text-gray-900 mb-3">Welcome!</Text>
+        <Text className="text-gray-600 text-base mb-10">Let's get to know you a little better</Text>
+
+        {/* Avatar */}
+        <TouchableOpacity onPress={handleAvatarUpload} className="self-center mb-8">
+          {avatar ? (
+            <View className="relative">
+              <Image
+                source={{ uri: avatar }}
+                style={{ width: 140, height: 140, borderRadius: 70 }}
+              />
+              <View className="absolute bottom-0 right-0 bg-pink-500 rounded-full p-3">
+                <Text className="text-white text-xs">📷</Text>
+              </View>
+            </View>
+          ) : (
+            <View className="w-32 h-32 rounded-full bg-white border-2 border-pink-300 justify-center items-center shadow-sm">
+              <Text className="text-4xl">📷</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Inputs */}
+        <View className="mb-4">
+          <Text className="text-sm font-semibold text-gray-700 mb-2">First Name</Text>
+          <TextInputField
+            placeholder="e.g., Sarah"
+            value={firstName}
+            onChangeText={setFirstName}
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="text-sm font-semibold text-gray-700 mb-2">Last Name</Text>
+          <TextInputField
+            placeholder="e.g., Johnson"
+            value={lastName}
+            onChangeText={setLastName}
+          />
+        </View>
+
+        {/* Birthday */}
+        <View className="mb-6">
+          <Text className="text-sm font-semibold text-gray-700 mb-2">Birthday</Text>
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            className="border border-gray-300 rounded-lg p-4 bg-white flex-row justify-between items-center"
+          >
+            <Text className={birthdate ? "text-gray-800 font-medium" : "text-gray-400"}>
+              {birthdate ? birthdate.toLocaleDateString() : "Select your birthday"}
+            </Text>
+            <Text className="text-xl">📅</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={birthdate ?? new Date(2000, 0, 1)}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            maximumDate={new Date()}
+            onChange={(event, date) => {
+              if (Platform.OS !== "ios") setShowDatePicker(false);
+              if (date) setBirthdate(date);
+            }}
+          />
         )}
-      </TouchableOpacity>
+      </View>
 
-      {/* Inputs */}
-      <TextInputField
-        placeholder="First Name"
-        value={firstName}
-        onChangeText={setFirstName}
-      />
-      <TextInputField
-        placeholder="Last Name"
-        value={lastName}
-        onChangeText={setLastName}
-      
-      />
-
-      {/* Birthday */}
-      <TouchableOpacity
-        onPress={() => setShowDatePicker(true)}
-        className="border border-gray-300 rounded-lg p-4 mb-6"
-      >
-        <Text className="text-gray-800">
-          {birthdate ? birthdate.toDateString() : "Select Birthday"}
-        </Text>
-      </TouchableOpacity>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={birthdate ?? new Date(2000, 0, 1)}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          maximumDate={new Date()}
-          onChange={(event, date) => {
-            if (Platform.OS !== "ios") setShowDatePicker(false);
-            if (date) setBirthdate(date);
-          }}
-        />
-      )}
-
-      {/* Continue */}
+      {/* Continue Button */}
       <TouchableOpacity
         onPress={handleContinue}
-        className="bg-pink-500 p-4 rounded-lg"
+        activeOpacity={0.85}
       >
-        <Text className="text-white text-center font-bold">Continue</Text>
+        <LinearGradient
+          colors={["#ff69b4", "#ff1493"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="p-4 rounded-2xl shadow-lg"
+        >
+          <Text className="text-center text-white font-bold text-lg">Continue</Text>
+        </LinearGradient>
       </TouchableOpacity>
-    </View>
     </LinearGradient>
   );
 }
