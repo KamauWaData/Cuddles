@@ -21,11 +21,11 @@ export default function Index() {
       //Fetch profile to check if user is onboarded
       const { data: profile } = await supabase
         .from("profiles")
-        .select("is_onboarded")
+        .select("profile_complete")
         .eq("id", session.user.id)
         .single();
 
-        if (!profile?.is_onboarded) {
+        if (!profile?.profile_complete) {
           router.replace("/(onboarding)/ProfileName") //change this later if needed
         } else {
           router.replace("/(main)/home");

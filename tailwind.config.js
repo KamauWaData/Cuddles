@@ -14,8 +14,11 @@ module.exports = {
         pinkAccent: '#E48DDE',
         darkText: '#1A1A1A',
       },
-      
+      fontFamily: {
+        p: ['Poppins', 'System'],
+      },
     },
+
   },
   plugins: [],
 }

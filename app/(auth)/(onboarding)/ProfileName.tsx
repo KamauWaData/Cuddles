@@ -17,6 +17,7 @@ import { readAsStringAsync as readAsStringAsyncLegacy } from "expo-file-system/l
 import { supabase } from "../../../lib/supabase";
 import SkipButton from "../../../components/onboarding/SkipButton";
 import TextInputField from "../../../components/TextInputField";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ProfileName() {
   const { uid } = useLocalSearchParams();
@@ -29,6 +30,23 @@ export default function ProfileName() {
   // 📸 Pick & upload image to Supabase Storage
   const handleAvatarUpload = async () => {
     try {
+      // ✅ Ensure user is authenticated before uploading
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser?.user?.id) {
+        Alert.alert("Authentication required", "Please sign in to upload photos.");
+        console.warn("Auth check failed:", authError);
+        return;
+      }
+
+      // ✅ Get the session token explicitly to pass to storage upload
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        Alert.alert("Session error", "Could not retrieve auth token. Please try again.");
+        console.warn("No access token available");
+        return;
+      }
+
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission required", "Please allow photo access.");
@@ -45,7 +63,8 @@ export default function ProfileName() {
 
       const file = result.assets[0];
       const fileExt = file.uri.split(".").pop() || "jpg";
-      const filePath = `avatars/${uid ?? Date.now()}.${fileExt}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${authUser.user.id}/${fileName}`;
 
       // ✅ Read as base64 safely using the legacy implementation which preserves the
       // old signature and runtime behavior. The modern API recommends using
@@ -57,21 +76,26 @@ export default function ProfileName() {
       // Convert base64 to binary Uint8Array for upload
       const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
+      console.log(`Uploading to path: ${filePath}, User ID: ${authUser.user.id}, Token: ${accessToken.substring(0, 20)}...`);
+
       const { data, error } = await supabase.storage
         .from("avatars")
         .upload(filePath, byteArray, {
           contentType: file.mimeType ?? "image/jpeg",
           upsert: true,
+          cacheControl: "max-age=3600",
         });
 
       if (error) throw error;
 
+      // Get the public URL for the ACTUAL FILE, not the folder
       const { data: publicUrlData } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
       setAvatar(publicUrlData.publicUrl);
       Alert.alert("Uploaded", "Profile photo uploaded successfully!");
+      console.log("Upload successful:", publicUrlData.publicUrl);
     } catch (err: any) {
       console.error("Upload error:", err);
       Alert.alert("Upload failed", err.message || "Unexpected error");
@@ -114,9 +138,9 @@ export default function ProfileName() {
         params: {
           uid: resolvedUid,
           profile: JSON.stringify({
-            firstName,
-            lastName,
-            birthdate: birthdate.toISOString().split("T")[0],
+            first_name: firstName,
+            last_name: lastName,
+            birthday: birthdate.toISOString().split("T")[0],
             avatar,
           }),
         },
@@ -128,11 +152,12 @@ export default function ProfileName() {
   };
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
+    <LinearGradient
+          colors={["#fff0f5", "#ffe4e1"]}
+          className="flex-1 p-6 justify-center"
+        >
+    <View className="flex-1 px-6 justify-center">
       <View className="flex-row justify-between items-center mb-6">
-
-        <Text className="text-xl font-bold">Your Profile Name</Text>
-         
         <SkipButton
           to="/(auth)/(onboarding)/Gender"
           onSkip={async () => {
@@ -152,12 +177,14 @@ export default function ProfileName() {
       </View>
       {/* Progress indicator */}
         <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
-          <View className="h-full bg-pink-500 w-1/5" />
+          <View className="h-full bg-pink-500 w-2/5" />
         </View> 
+
+      <Text className="text-xl items-center justify-center font-bold text-pink-500">Profile Basics</Text>
       {/* Avatar */}
       <TouchableOpacity
         onPress={handleAvatarUpload}
-        className="self-center mb-6"
+        className="self-center mb-6 mt-3"
       >
         {avatar ? (
           <Image
@@ -215,5 +242,6 @@ export default function ProfileName() {
         <Text className="text-white text-center font-bold">Continue</Text>
       </TouchableOpacity>
     </View>
+    </LinearGradient>
   );
 }

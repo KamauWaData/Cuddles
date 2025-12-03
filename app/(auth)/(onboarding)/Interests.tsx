@@ -55,20 +55,32 @@ export default function Interests() {
 
     try {
       const parsedProfile = profile ? JSON.parse(profile) : {};
+      console.log("Interests handleContinue - parsedProfile:", parsedProfile);
 
       if (!effectiveUid) {
         Alert.alert("Missing user", "Unable to determine user id. Please sign in again.");
         return;
       }
 
+      // Use snake_case field names that ProfileName.tsx now passes
       const userProfile = {
-        ...parsedProfile,
+        id: effectiveUid,
+        // Use snake_case column names to match the profiles table schema
+        first_name: parsedProfile.first_name ?? null,
+        last_name: parsedProfile.last_name ?? null,
+        birthday: parsedProfile.birthday ?? null,
+        avatar: parsedProfile.avatar ?? null,
+        // Add onboarding fields
+        gender: parsedProfile.gender ?? null,
+        show_me: parsedProfile.show_me ?? [],
         interests: selected,
         profile_complete: true,
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("profiles").upsert({ id: effectiveUid, ...userProfile });
+      console.log("Interests handleContinue - userProfile to upsert:", userProfile);
+
+      const { error } = await supabase.from("profiles").upsert({ ...userProfile });
 
       if (error) {
         console.error("Supabase error:", error);
