@@ -1,9 +1,11 @@
-// app/(main)/dates/ScheduledDates.tsx
+// app/(main)/ScheduledDates.tsx
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, Image, ActivityIndicator, RefreshControl, Platform } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, Image, ActivityIndicator, RefreshControl, Platform, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ScheduledDates() {
   const router = useRouter();
@@ -55,57 +57,122 @@ export default function ScheduledDates() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
-        <ActivityIndicator size="large" color="#ec4899" />
-      </View>
+      <LinearGradient colors={["#FFF0F5", "#FFFFFF"]} style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#ec4899" />
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16 }}>
-        <View>
-          <Text style={{ fontSize: 22, fontWeight: "800" }}>Explore Dates</Text>
-          <Text style={{ color: "#6b7280" }}>{items.length} upcoming</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push("/(main)/dates/ScheduleDate")} style={{ backgroundColor: "#ec4899", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}>
-          <Ionicons name="add" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={items}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => router.push({ pathname: "/(main)/dates/details/[id]", params: { id: item.id } })} style={{ marginBottom: 16, borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#eee", backgroundColor: "#fff" }}>
-            {item.image_url ? <Image source={{ uri: item.image_url }} style={{ width: "100%", height: 160 }} /> : <View style={{ width: "100%", height: 160, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center" }}><Ionicons name="calendar-outline" size={36} color="#cbd5e1" /></View>}
-            <View style={{ padding: 12 }}>
-              <Text style={{ fontSize: 18, fontWeight: "700" }}>{item.title}</Text>
-              <Text style={{ color: "#6b7280" }}>{item.location || "No location"}</Text>
-              <Text style={{ color: "#94a3b8", marginTop: 6 }}>{new Date(item.event_date).toLocaleString()}</Text>
-
-              {item.owner ? (
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
-                  {item.owner.avatar ? <Image source={{ uri: item.owner.avatar }} style={{ width: 36, height: 36, borderRadius: 18, marginRight: 8 }} /> : null}
-                  <Text style={{ fontWeight: "600" }}>{item.owner.first_name}</Text>
-                </View>
-              ) : null}
-            </View>
+    <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
+      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Explore Dates</Text>
+            <Text style={styles.headerSubtitle}>{items.length} upcoming date{items.length !== 1 ? "s" : ""}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/(main)/dates/ScheduleDate")}
+            style={styles.headerButton}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["#ff69b4", "#ff1493"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.buttonGradient}
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
-        )}
-        ListEmptyComponent={<View style={{ padding: 24, alignItems: "center" }}><Text style={{ color: "#64748b" }}>No upcoming dates found.</Text></View>}
-      />
+        </View>
 
-      {/* Floating action button */}
-      <TouchableOpacity onPress={() => router.push("/(main)/dates/ScheduleDate")} style={{
-        position: "absolute", right: 20, bottom: Platform.OS === "ios" ? 36 : 16,
-        width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center",
-        backgroundColor: "#ec4899", elevation: 6
-      }}>
-        <Ionicons name="calendar" size={28} color="#fff" />
-      </TouchableOpacity>
-    </View>
+        {/* Dates List */}
+        <FlatList
+          data={items}
+          keyExtractor={(i) => i.id}
+          scrollEnabled={true}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ec4899" />}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: "/(main)/dates/details/[id]", params: { id: item.id } })}
+              style={styles.dateCard}
+              activeOpacity={0.85}
+            >
+              {/* Image Section */}
+              {item.image_url ? (
+                <Image source={{ uri: item.image_url }} style={styles.dateImage} />
+              ) : (
+                <View style={styles.placeholderImage}>
+                  <Ionicons name="calendar-outline" size={40} color="#FF3366" />
+                </View>
+              )}
+
+              {/* Content Section */}
+              <View style={styles.dateContent}>
+                <Text style={styles.dateTitle} numberOfLines={1}>{item.title}</Text>
+
+                <View style={styles.dateInfoRow}>
+                  <Ionicons name="location-outline" size={16} color="#FF3366" />
+                  <Text style={styles.dateLocation} numberOfLines={1}>
+                    {item.location || "No location specified"}
+                  </Text>
+                </View>
+
+                <View style={styles.dateInfoRow}>
+                  <Ionicons name="time-outline" size={16} color="#FF3366" />
+                  <Text style={styles.dateTime}>
+                    {new Date(item.event_date).toLocaleDateString()} at {new Date(item.event_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </View>
+
+                {/* Host Info */}
+                {item.owner ? (
+                  <View style={styles.ownerSection}>
+                    {item.owner.avatar ? (
+                      <Image source={{ uri: item.owner.avatar }} style={styles.ownerAvatar} />
+                    ) : (
+                      <View style={styles.ownerAvatarPlaceholder}>
+                        <Text>👤</Text>
+                      </View>
+                    )}
+                    <Text style={styles.ownerName}>{item.owner.first_name}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="calendar-outline" size={48} color="#FF3366" />
+              </View>
+              <Text style={styles.emptyTitle}>No upcoming dates</Text>
+              <Text style={styles.emptySubtitle}>Check back later for new date ideas</Text>
+            </View>
+          }
+        />
+
+        {/* Floating Action Button */}
+        <TouchableOpacity
+          onPress={() => router.push("/(main)/dates/ScheduleDate")}
+          style={styles.fab}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={["#ff69b4", "#ff1493"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="add" size={32} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
