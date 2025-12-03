@@ -123,21 +123,20 @@ export default function Interests() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-  
+    <SafeAreaView className="flex-1 bg-gradient-to-b from-white to-pink-50">
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 80 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row justify-between items-center mb-4">
-        <TouchableOpacity onPress={() => router.back()} className="px-2 py-1">
-          <Text className="text-pink-500">Back</Text>
-        </TouchableOpacity>
+        <View className="flex-row justify-between items-center mb-8">
+          <TouchableOpacity onPress={() => router.back()} className="px-2 py-1">
+            <Text className="text-pink-500 font-semibold">← Back</Text>
+          </TouchableOpacity>
 
-        <Text className="text-xl font-bold">Your Interests</Text>
+          <Text className="text-lg font-semibold text-gray-800">Step 3 of 3</Text>
 
-        <SkipButton to="/(main)/home" onSkip={handleSkip} />
-      </View>
+          <SkipButton to="/(main)/home" onSkip={handleSkip} />
+        </View>
         {/* Progress indicator */}
         <View className="w-full h-1 bg-gray-200 mb-8 rounded-full overflow-hidden">
           <View className="h-full bg-pink-500 w-5/5" />
@@ -149,15 +148,26 @@ export default function Interests() {
         </Text>
 
         {/* Search bar */}
-        <TextInput
-          placeholder="Search interests..."
-          value={search}
-          onChangeText={setSearch}
-          className="border border-gray-300 rounded-lg px-4 py-3 mb-4 text-gray-800"
-        />
+        <View className="mb-6 flex-row items-center bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
+          <Text className="text-lg mr-2">🔍</Text>
+          <TextInput
+            placeholder="Search interests..."
+            value={search}
+            onChangeText={setSearch}
+            placeholderTextColor="#9CA3AF"
+            className="flex-1 text-gray-800"
+          />
+        </View>
+
+        {/* Selection counter */}
+        <View className="mb-6 p-3 bg-pink-50 rounded-lg border border-pink-200">
+          <Text className="text-center text-pink-600 font-semibold">
+            {selected.length} selected {selected.length < 3 ? `(${3 - selected.length} more needed)` : ""}
+          </Text>
+        </View>
 
         {/* Interest chips */}
-        <View className="flex-row flex-wrap gap-2">
+        <View className="flex-row flex-wrap gap-3 mb-6">
           {filteredInterests.map((interest) => {
             const isSelected = selected.includes(interest);
             return (
@@ -165,35 +175,41 @@ export default function Interests() {
                 key={interest}
                 onPress={() => toggleInterest(interest)}
                 activeOpacity={0.8}
-                className={`px-4 py-2 rounded-full border transition-all duration-200 ${
+                className={`px-4 py-3 rounded-full border-2 transition-all duration-200 ${
                   isSelected
-                    ? "bg-pink-500 border-pink-500"
-                    : "border-gray-300 bg-gray-50"
+                    ? "bg-pink-500 border-pink-500 shadow-md"
+                    : "border-gray-300 bg-white shadow-sm"
                 }`}
               >
                 <Text
-                  className={`${
+                  className={`font-semibold text-[14px] ${
                     isSelected ? "text-white" : "text-gray-700"
-                  } text-[15px]`}
+                  }`}
                 >
-                  {interest}
+                  {isSelected ? "✓ " : ""}{interest}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Continue */}
+        {/* Finish Button */}
         <TouchableOpacity
           onPress={handleContinue}
-          className={`mt-10 p-4 rounded-lg ${
-            selected.length >= 3 ? "bg-pink-500" : "bg-gray-300"
-          }`}
           disabled={selected.length < 3}
+          activeOpacity={0.85}
+          className="mt-4"
         >
-          <Text className="text-white text-center font-semibold text-lg">
-            Finish
-          </Text>
+          <LinearGradient
+            colors={selected.length >= 3 ? ["#ff69b4", "#ff1493"] : ["#d1d5db", "#9ca3af"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="p-4 rounded-2xl shadow-lg"
+          >
+            <Text className="text-white text-center font-bold text-lg">
+              {selected.length >= 3 ? "Let's Find Your Match!" : `Select ${3 - selected.length} more`}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
