@@ -1,8 +1,9 @@
-import "./global.css"
+
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase"
 import { View, ActivityIndicator } from "react-native";
+import BrandedLoading from "../components/BrandedLoading";
 
 export default function Index() {
   const router = useRouter();
@@ -20,12 +21,12 @@ export default function Index() {
       //Fetch profile to check if user is onboarded
       const { data: profile } = await supabase
         .from("profiles")
-        .select("is_onboarded")
+        .select("profile_complete")
         .eq("id", session.user.id)
         .single();
 
-        if (!profile?.is_onboarded) {
-          router.replace("/(onboarding)/ProfileName") //change this later if needed
+        if (!profile?.profile_complete) {
+          router.replace("/(auth)/(onboarding)/ProfileName");
         } else {
           router.replace("/(main)/Home");
         }
@@ -34,7 +35,8 @@ export default function Index() {
 
   return (
     <View className="flex-1 justify-center items-center bg-white">
-      <ActivityIndicator size="large" color="#f472b6" />
+      <BrandedLoading message="Loading..." />
+
     </View>
   )
 }

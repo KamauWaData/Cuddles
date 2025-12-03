@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import AppNavigator from '.';
-export default function App() {
-  return <AppNavigator />;
-}
+import './global'
 
+export default function App(): null {
+  return null;
+}
