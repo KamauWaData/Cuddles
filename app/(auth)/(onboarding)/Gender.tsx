@@ -30,7 +30,7 @@ export default function Gender() {
     }
 
     router.push({
-      pathname: "/(auth)/Interests",
+      pathname: "/(auth)/(onboarding)/Interests",
       params: {
         uid,
         profile: JSON.stringify({

@@ -134,7 +134,7 @@ export default function ProfileName() {
       if (error) throw error;
 
       router.push({
-        pathname: "/(auth)/Gender",
+        pathname: "/(auth)/(onboarding)/Gender",
         params: {
           uid: resolvedUid,
           profile: JSON.stringify({
