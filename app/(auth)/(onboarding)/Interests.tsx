@@ -89,7 +89,7 @@ export default function Interests() {
         return;
       }
 
-      router.replace("/(main)/home");
+      router.replace("/(main)/Home");
     } catch (err: any) {
       console.error("Profile save error:", err);
       Alert.alert("Unexpected Error", err.message || "Please try again.");
@@ -116,7 +116,7 @@ export default function Interests() {
         return;
       }
 
-      router.replace("/(main)/home");
+      router.replace("/(main)/Home");
     } catch (err: any) {
       console.error("Skip error:", err);
       Alert.alert("Unexpected Error", err.message || "Please try again.");
@@ -136,7 +136,7 @@ export default function Interests() {
 
           <Text className="text-lg font-semibold text-gray-800">Step 3 of 3</Text>
 
-          <SkipButton to="/(main)/home" onSkip={handleSkip} />
+          <SkipButton to="/(main)/Home" onSkip={handleSkip} />
         </View>
         {/* Progress indicator */}
         <View className="w-full h-1 bg-gray-200 mb-10 rounded-full overflow-hidden">
