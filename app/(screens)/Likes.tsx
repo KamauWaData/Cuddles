@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { FlatList } from "react-native-gesture-handler";
@@ -78,5 +79,7 @@ const LikesScreen = () => {
                         />
                 </View>
             );
-    };
-}
+    }
+};
+
+export default LikesScreen;

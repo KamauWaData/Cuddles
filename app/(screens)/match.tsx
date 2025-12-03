@@ -40,4 +40,6 @@ const MatchDetailScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
         </View>
     )
-}
+};
+
+export default MatchDetailScreen;
