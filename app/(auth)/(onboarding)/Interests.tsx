@@ -34,6 +34,11 @@ export default function Interests() {
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
 
+  // Request permissions on onboarding
+  const permissionsRequest = usePermissions(["location", "camera"], {
+    showAlert: false,
+  });
+
   const filteredInterests = useMemo(() => {
     if (!search.trim()) return INTEREST_OPTIONS;
     return INTEREST_OPTIONS.filter((i) =>
