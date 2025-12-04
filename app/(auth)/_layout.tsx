@@ -9,13 +9,13 @@ export default function AuthLayout () {
             <StatusBar backgroundColor='#ffffff' />
             <Stack>
                 <Stack.Screen
-                name='login'
+                name='Login'
                 options={{
                     headerShown: false
                 }}
                 />
                 <Stack.Screen
-                name='register'
+                name='Register'
                 options={{
                     headerShown: false
                 }}
