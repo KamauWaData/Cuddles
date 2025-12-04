@@ -61,6 +61,9 @@ export default function Interests() {
     }
 
     try {
+      // Request permissions before saving profile
+      await permissionsRequest.requestAll();
+
       const parsedProfile = profile ? JSON.parse(profile) : {};
       console.log("Interests handleContinue - parsedProfile:", parsedProfile);
 
