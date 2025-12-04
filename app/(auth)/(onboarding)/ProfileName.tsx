@@ -104,10 +104,35 @@ export default function ProfileName() {
     }
   };
 
+  // 🔞 Validate age (must be 18+)
+  const validateAge = (): boolean => {
+    if (!birthdate) return false;
+
+    const today = new Date();
+    const age = today.getFullYear() - birthdate.getFullYear();
+    const monthDiff = today.getMonth() - birthdate.getMonth();
+
+    // Check if birthday hasn't occurred yet this year
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+      return age - 1 >= 18;
+    }
+
+    return age >= 18;
+  };
+
   // 💾 Save profile info
   const handleContinue = async () => {
     if (!firstName.trim() || !lastName.trim() || !birthdate) {
       Alert.alert("Missing fields", "Please fill all the fields first.");
+      return;
+    }
+
+    // Validate age
+    if (!validateAge()) {
+      Alert.alert(
+        "Age Restriction",
+        "You must be at least 18 years old to use this app. This platform is strictly for users 18 and above."
+      );
       return;
     }
 
