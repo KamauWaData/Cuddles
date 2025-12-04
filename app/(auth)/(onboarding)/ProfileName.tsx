@@ -7,6 +7,8 @@ import {
   Image,
   Alert,
   Platform,
+  ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -152,6 +154,15 @@ export default function ProfileName() {
   };
 
   return (
+      <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1"
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
     <LinearGradient
       colors={["#fff0f5", "#ffe4e1"]}
       className="flex-1 p-6 justify-between"
@@ -267,5 +278,7 @@ export default function ProfileName() {
         </LinearGradient>
       </TouchableOpacity>
     </LinearGradient>
+  </ScrollView>
+  </KeyboardAvoidingView>
   );
 }

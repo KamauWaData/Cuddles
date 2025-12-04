@@ -1,39 +1,58 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Slot, useRouter } from "expo-router";
-import { useSession } from "../lib/useSession";
+import { supabase } from "../lib/supabase";
 import BrandedLoading from "../components/BrandedLoading";
 
 export default function RootLayout() {
-  const { session, loading } = useSession();
   const router = useRouter();
   const lastRedirectRef = useRef<string | null>(null);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (loading) return;
+    let mounted = true;
 
-    const onboarded = (session as any)?.user?.user_metadata?.onboarded;
-    const target = !session
-      ? "/(auth)/Login"
-      : !onboarded
-      ? "/(auth)/(onboarding)/ProfileName"
-      : null;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
 
-    if (!target) return;
-    if (lastRedirectRef.current === target) return;
+      if (!mounted) return;
 
-    lastRedirectRef.current = target;
-    const t = setTimeout(() => {
-      try {
-        router.replace(target);
-      } catch (e) {
-        console.warn("router.replace failed:", e);
+      if (!session) {
+        safeRedirect("/(auth)/Login");
+        setChecking(false);
+        return;
       }
-    }, 40);
 
-    return () => clearTimeout(t);
-  }, [loading, session, router]);
+      // Fetch onboarding status
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("profile_complete")
+        .eq("id", session.user.id)
+        .single();
 
-  if (loading) {
+      if (!mounted) return;
+
+      if (!profile?.profile_complete) {
+        safeRedirect("/(auth)/(onboarding)/ProfileName");
+      } else {
+        safeRedirect("/(main)/Home");
+      }
+
+      setChecking(false);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function safeRedirect(target: string) {
+    if (lastRedirectRef.current === target) return;
+    lastRedirectRef.current = target;
+    router.replace(target);
+  }
+
+  if (checking) {
     return <BrandedLoading message="Connecting..." />;
   }
 
