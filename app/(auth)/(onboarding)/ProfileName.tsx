@@ -276,10 +276,11 @@ export default function ProfileName() {
 
         {showDatePicker && (
           <DateTimePicker
-            value={birthdate ?? new Date(2000, 0, 1)}
+            value={birthdate ?? new Date(2006, 0, 1)}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
-            maximumDate={new Date()}
+            maximumDate={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate())}
+            minimumDate={new Date(1900, 0, 1)}
             onChange={(event, date) => {
               if (Platform.OS !== "ios") setShowDatePicker(false);
               if (date) setBirthdate(date);
