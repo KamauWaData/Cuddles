@@ -220,7 +220,18 @@ export default function ProfileName() {
         </View>
 
         <Text className="text-3xl font-bold text-gray-900 mb-3">Welcome!</Text>
-        <Text className="text-gray-600 text-base mb-10">Let's get to know you a little better</Text>
+        <Text className="text-gray-600 text-base mb-6">Let's get to know you a little better</Text>
+
+        {/* 18+ Disclaimer */}
+        <View className="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-8">
+          <View className="flex-row items-center gap-2 mb-2">
+            <Text className="text-pink-600 text-lg font-bold">⚠️</Text>
+            <Text className="text-pink-700 font-semibold text-sm flex-1">18+ Only</Text>
+          </View>
+          <Text className="text-pink-600 text-xs">
+            This app is strictly for users 18 years and older. By continuing, you confirm you are at least 18.
+          </Text>
+        </View>
 
         {/* Avatar */}
         <TouchableOpacity onPress={handleAvatarUpload} className="self-center mb-8">
