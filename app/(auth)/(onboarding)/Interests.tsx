@@ -13,6 +13,7 @@ import { supabase } from "../../../lib/supabase";
 import SkipButton from "../../../components/onboarding/SkipButton";
 import { useSession } from "../../../lib/useSession";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { usePermissions } from "../../../lib/usePermissions";
 
 const INTEREST_OPTIONS = [
   "Sports", "Music", "Travel", "Movies", "Books", "Fitness", "Cooking", "Art",
