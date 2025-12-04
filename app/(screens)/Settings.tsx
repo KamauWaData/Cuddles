@@ -44,8 +44,21 @@ export default function Settings() {
                 <Text>Edit profile</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push("/(main)/profile/Privacy")} style={{ padding: 12, borderWidth: 1, borderColor: "#eee", borderRadius: 10, marginBottom: 12 }}>
-                <Text>Privacy</Text>
+
+            <TouchableOpacity onPress={() => router.push("/(screens)/PrivacyPolicy")} style={{ padding: 12, borderWidth: 1, borderColor: "#eee", borderRadius: 10, marginBottom: 12 }}>
+                <Text>Privacy Policy</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/(screens)/DataPrivacyGDPR")} style={{ padding: 12, borderWidth: 1, borderColor: "#eee", borderRadius: 10, marginBottom: 12 }}>
+                <Text>Data Privacy / GDPR</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/(screens)/About")} style={{ padding: 12, borderWidth: 1, borderColor: "#eee", borderRadius: 10, marginBottom: 12 }}>
+                <Text>About / 18+ Only</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/(screens)/safety/SafetyTips")} style={{ padding: 12, borderWidth: 1, borderColor: "#eee", borderRadius: 10, marginBottom: 12 }}>
+                <Text>Safety Tips</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={signOut} style={{ padding: 12, backgroundColor: "#f8fafc", borderRadius: 10, marginBottom: 12 }}>

@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useGalleryPermission, useLocationPermission } from '../../../components/usePermissions';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../../lib/supabase";
 
 export default function EditProfile() {
   const { user } = useLocalSearchParams();
+  const params = useLocalSearchParams();
   const router = useRouter();
   const parsedUser = user ? JSON.parse(user as string) : {};
 
@@ -19,8 +21,14 @@ export default function EditProfile() {
   );
   const [interests, setInterests] = useState(parsedUser.interests || []);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [location, setLocation] = useState(parsedUser.location || "");
+  const [coords, setCoords] = useState<{ latitude: number, longitude: number } | null>(null);
+  const requestGalleryPermission = useGalleryPermission();
+  const requestLocationPermission = useLocationPermission();
 
   const pickImage = async () => {
+    const hasPermission = await requestGalleryPermission();
+    if (!hasPermission) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -48,13 +56,29 @@ export default function EditProfile() {
     setAvatar(data.secure_url);
   };
 
+  // When navigating to SetLocation:
+const handleSetLocation = async () => {
+  const hasPermission = await requestLocationPermission();
+  if (!hasPermission) return;
+  router.push("/(screens)/SetLocation");
+};
+
+// Listen for returned location params:
+  useEffect(() => {
+    if (params.latitude && params.longitude) {
+      setCoords({ latitude: Number(params.latitude), longitude: Number(params.longitude) });
+      setLocation(`Lat: ${params.latitude}, Lng: ${params.longitude}`);
+    }
+  }, [params.latitude, params.longitude]);
+
   const handleSave = async () => {
     if (!firstName || !lastName) {
       Alert.alert("Please fill in your name");
       return;
     }
 
-    const { error } = await supabase.from("users").upsert({
+    // Save location if available
+    let profileData: any = {
       id: parsedUser.id,
       firstName,
       lastName,
@@ -63,7 +87,13 @@ export default function EditProfile() {
       birthday: birthdate.toISOString().split("T")[0],
       interests,
       updatedAt: new Date().toISOString(),
-    });
+    };
+    if (coords) {
+      profileData.latitude = coords.latitude;
+      profileData.longitude = coords.longitude;
+      profileData.location = location;
+    }
+    const { error } = await supabase.from("users").upsert(profileData);
 
     if (error) {
       console.error(error);
@@ -83,6 +113,10 @@ export default function EditProfile() {
         />
         <Text className="text-center text-pink-600 mt-2">Change Photo</Text>
       </TouchableOpacity>
+      <TouchableOpacity onPress={handleSetLocation} className="self-center mb-4 bg-blue-100 px-4 py-2 rounded-lg">
+        <Text className="text-blue-700">Set Location</Text>
+      </TouchableOpacity>
+      {location ? <Text className="text-center text-gray-600 mb-2">{location}</Text> : null}
 
       <TextInput
         placeholder="First Name"

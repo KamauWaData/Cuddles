@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useSession } from "../../lib/useSession";
 import { supabase } from "../../lib/supabase";
@@ -9,6 +9,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/build/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 
 // Set your storage bucket name (change if different)
 const AVATAR_BUCKET = "avatars";
@@ -157,6 +159,24 @@ export default function MyProfile() {
     }${profile.last_name ?? ""}`.trim() ??
     "Your Name";
 
+  // Navigation buttons for verification, safety, and profile improvements
+  const NavigationButtons = () => (
+    <View style={{ marginVertical: 16 }}>
+      <TouchableOpacity onPress={() => router.push("/(screens)/verification/VerificationIntro")}
+        style={{ backgroundColor: "#f3e8ff", padding: 12, borderRadius: 10, marginBottom: 8 }}>
+        <Text style={{ color: "#7c3aed", textAlign: "center", fontWeight: "600" }}>Go to Verification</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push("/(screens)/safety/SafetyTips")}
+        style={{ backgroundColor: "#fef9c3", padding: 12, borderRadius: 10, marginBottom: 8 }}>
+        <Text style={{ color: "#ca8a04", textAlign: "center", fontWeight: "600" }}>View Safety Tips</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push("/(screens)/profile-improvements/ProfileBadges")}
+        style={{ backgroundColor: "#dbeafe", padding: 12, borderRadius: 10 }}>
+        <Text style={{ color: "#2563eb", textAlign: "center", fontWeight: "600" }}>See Profile Badges</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const computeAge = (b?: string | null) => {
     if (!b) return null;
     const bd = new Date(b);
@@ -167,7 +187,29 @@ export default function MyProfile() {
     return age;
   };
 
-  const age = computeAge(profile.birthday);
+  const age = computeAge(profile?.birthday);
+
+  // Returns a function that requests gallery/media library permission and resolves to boolean
+  function useGalleryPermission() {
+    // Lazy-load to avoid import at top-level (for SSR safety)
+    const { useState, useEffect } = React;
+    const [granted, setGranted] = useState<boolean | null>(null);
+
+    // Only import expo-image-picker when needed
+    const getPermission = async () => {
+      let ImagePicker;
+      try {
+        ImagePicker = require("expo-image-picker");
+      } catch {
+        return false;
+      }
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      return status === "granted";
+    };
+
+    // Return a function that requests permission when called
+    return getPermission;
+  }
 
   return (
     <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
@@ -180,6 +222,8 @@ export default function MyProfile() {
           <Text style={styles.headerTitle}>My Profile</Text>
           <View style={styles.headerSpacer} />
         </View>
+
+        <NavigationButtons />
 
         <ScrollView
           style={styles.scrollView}
@@ -291,21 +335,72 @@ export default function MyProfile() {
           )}
 
           {/* Gallery Section */}
-          {profile.gallery && profile.gallery.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="image-outline" size={20} color="#FF3366" />
-                <Text style={styles.sectionTitle}>Gallery</Text>
-              </View>
-              <View style={styles.galleryGrid}>
-                {profile.gallery.map((pic, index) => (
-                  <TouchableOpacity key={index} style={styles.galleryItem} activeOpacity={0.8}>
-                    <Image source={{ uri: pic }} style={styles.galleryImage} />
-                  </TouchableOpacity>
-                ))}
-              </View>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="image-outline" size={20} color="#FF3366" />
+              <Text style={styles.sectionTitle}>Gallery</Text>
             </View>
-          )}
+            <View style={styles.galleryGrid}>
+              {/* Add Photo Tile */}
+              <TouchableOpacity
+                style={[styles.galleryItem, styles.addPhotoTile]}
+                activeOpacity={0.8}
+                onPress={async () => {
+                  try {
+                    const hasPermission = await useGalleryPermission()();
+                    if (!hasPermission) return;
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [1, 1],
+                      quality: 0.8,
+                    });
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                      const uri = result.assets[0].uri;
+                      // Upload to Cloudinary
+                      const url = await uploadToCloudinary(uri);
+                      // Update Supabase
+                      const newGallery = [...(profile.gallery || []), url];
+                      const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                      if (error) throw error;
+                      setProfile({ ...profile, gallery: newGallery });
+                    }
+                  } catch (err: any) {
+                    Alert.alert('Upload failed', err.message || 'Could not upload image.');
+                  }
+                }}
+              >
+                <View style={styles.addPhotoContent}>
+                  <Ionicons name="add" size={32} color="#FF3366" />
+                  <Text style={{ color: '#FF3366', fontWeight: '600', marginTop: 4 }}>Add Photo</Text>
+                </View>
+              </TouchableOpacity>
+              {/* Gallery Images */}
+              {(profile.gallery || []).map((pic, index) => (
+                <View key={index} style={styles.galleryItem}>
+                  <Image source={{ uri: pic }} style={styles.galleryImage} />
+                  <TouchableOpacity
+                    style={styles.deleteIcon}
+                    onPress={async () => {
+                      Alert.alert('Delete Photo', 'Are you sure you want to remove this photo?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete', style: 'destructive', onPress: async () => {
+                            const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
+                            const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                            if (!error) setProfile({ ...profile, gallery: newGallery });
+                          }
+                        }
+                      ]);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#FF3366" style={{ backgroundColor: 'white', borderRadius: 14 }} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
 
           {/* Logout Section */}
           <View style={styles.section}>
@@ -614,5 +709,26 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     fontWeight: "700",
     fontSize: 16,
+  },
+  addPhotoTile: {
+    backgroundColor: '#FFF0F5',
+    borderWidth: 1,
+    borderColor: '#FFB6C1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  addPhotoContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  deleteIcon: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 2,
+    backgroundColor: 'white',
+    borderRadius: 14,
   },
 });
