@@ -223,7 +223,7 @@ export default function MyProfile() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <NavigationButtons />
+        
 
         <ScrollView
           style={styles.scrollView}
@@ -415,6 +415,8 @@ export default function MyProfile() {
               <Text style={styles.logoutButtonText}>Log Out</Text>
             </TouchableOpacity>
           </View>
+
+          <NavigationButtons />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

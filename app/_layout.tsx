@@ -1,60 +1,63 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Slot, useRouter } from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import BrandedLoading from "../components/BrandedLoading";
 
 export default function RootLayout() {
   const router = useRouter();
-  const lastRedirectRef = useRef<string | null>(null);
+  const segments = useSegments() as string[];
+
   const [checking, setChecking] = useState(true);
+  const redirected = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
-
-    (async () => {
+    const run = async () => {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
 
-      if (!mounted) return;
+      const root = segments[0];
+      const leaf = segments[1];
 
+      // 1) NOT LOGGED IN → FORCE AUTH
       if (!session) {
-        safeRedirect("/(auth)/Login");
+        if (root !== "(auth)") router.replace("/(auth)/Login");
         setChecking(false);
         return;
       }
 
-      // Fetch onboarding status
+      // 2) GET PROFILE
       const { data: profile } = await supabase
         .from("profiles")
         .select("profile_complete")
         .eq("id", session.user.id)
         .single();
 
-      if (!mounted) return;
+      const onboarded = profile?.profile_complete;
 
-      if (!profile?.profile_complete) {
-        safeRedirect("/(auth)/(onboarding)/ProfileName");
-      } else {
-        safeRedirect("/(main)/Home");
+      // 3) NOT ONBOARDED → FORCE ONBOARDING
+      if (!onboarded) {
+        if (root !== "(auth)" || !leaf?.includes("onboarding")) {
+          router.replace("/(auth)/(onboarding)/ProfileName");
+        }
+        setChecking(false);
+        return;
+      }
+
+      // 4) LOGGED IN + ONBOARDED → FORCE MAIN SCREENS
+      if (root === "(auth)") {
+        router.replace("/(main)/Home");
       }
 
       setChecking(false);
-    })();
-
-    return () => {
-      mounted = false;
     };
-  }, []);
 
-  function safeRedirect(target: string) {
-    if (lastRedirectRef.current === target) return;
-    lastRedirectRef.current = target;
-    router.replace(target);
-  }
+    if (!redirected.current) {
+      redirected.current = true;
+      run();
+    }
+  }, [segments]);
 
-  if (checking) {
-    return <BrandedLoading message="Connecting..." />;
-  }
+  if (checking) return <BrandedLoading message="Connecting..." />;
 
   return <Slot />;
 }

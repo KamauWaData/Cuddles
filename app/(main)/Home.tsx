@@ -16,6 +16,7 @@ const SCREEN_W = Dimensions.get("window").width;
 const SCREEN_H = Dimensions.get("window").height;
 
 export default function HomeScreen() {
+    console.log('[HomeScreen] Mounted');
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -50,6 +51,7 @@ export default function HomeScreen() {
       const myId = auth?.user?.id;
       if (!myId) {
         setLoading(false);
+        console.log()
         return;
       }
 
@@ -188,7 +190,18 @@ export default function HomeScreen() {
   };
 
   if (loading) {
+    console.log();
+    console.log('[HomeScreen] Loading...');
     return <BrandedLoading message="Finding matches for you..." />;
+  }
+
+  if (!userProfile) {
+    console.log('[HomeScreen] No userProfile');
+    return (
+      <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#fff'}}>
+        <Text style={{color:'red',fontSize:18}}>Error: No user profile found</Text>
+      </View>
+    );
   }
 
   return (

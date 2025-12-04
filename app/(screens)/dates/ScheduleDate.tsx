@@ -201,7 +201,7 @@ export default function ScheduleDate() {
         Alert.alert("Posted", "Date posted successfully.");
       }
 
-      router.replace("/(main)/dates/MyDates");
+      router.replace("/(screens)/dates/MyDates");
     } catch (err: any) {
       console.error("save error", err);
       Alert.alert("Save error", err?.message || "Unexpected error.");

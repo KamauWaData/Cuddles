@@ -59,7 +59,7 @@ export default function LoginScreen() {
         return Alert.alert('Login failed', error.message);
       }
       console.log('login success', data);
-      router.replace('/(main)/home');
+      router.replace('/(main)/Home');
     } catch (err) {
       console.error('unexpected login error', err);
       Alert.alert('Login failed', String(err));

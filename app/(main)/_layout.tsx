@@ -1,82 +1,95 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { View, StyleSheet, Platform } from "react-native";
+import { Text } from "react-native";
 
 export default function TabsLayout() {
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#FF3366",
-        tabBarInactiveTintColor: "#9CA3AF",
-        tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarItemStyle: styles.tabBarItem,
-        headerShown: false,
-        tabBarShowLabel: true,
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Discover",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconContainer : undefined}>
-              <Ionicons
-                name={focused ? "heart" : "heart-outline"}
-                color={color}
-                size={24}
-              />
-            </View>
-          ),
+    console.log('[TabsLayout] Mounted');
+  try {
+    return (
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#FF3366",
+          tabBarInactiveTintColor: "#9CA3AF",
+          tabBarStyle: styles.tabBar,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
+          headerShown: false,
+          tabBarShowLabel: true,
         }}
-      />
-      <Tabs.Screen
-        name="ScheduledDates"
-        options={{
-          title: "Dates",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconContainer : undefined}>
-              <Ionicons
-                name={focused ? "calendar" : "calendar-outline"}
-                color={color}
-                size={24}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: "Messages",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconContainer : undefined}>
-              <Ionicons
-                name={focused ? "chatbubble" : "chatbubble-outline"}
-                color={color}
-                size={24}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="matches"
-        options={{
-          title: "Matches",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconContainer : undefined}>
-              <Ionicons
-                name={focused ? "people" : "people-outline"}
-                color={color}
-                size={24}
-              />
-            </View>
-          ),
-        }}
-      />
-    </Tabs>
-  );
+      >
+        <Tabs.Screen
+          name="Home"
+          options={{
+            title: "Discover",
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? styles.activeIconContainer : undefined}>
+                <Ionicons
+                  name={focused ? "heart" : "heart-outline"}
+                  color={color}
+                  size={24}
+                />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="ScheduledDates"
+          options={{
+            title: "Dates",
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? styles.activeIconContainer : undefined}>
+                <Ionicons
+                  name={focused ? "calendar" : "calendar-outline"}
+                  color={color}
+                  size={24}
+                />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: "Messages",
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? styles.activeIconContainer : undefined}>
+                <Ionicons
+                  name={focused ? "chatbubble" : "chatbubble-outline"}
+                  color={color}
+                  size={24}
+                />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="matches"
+          options={{
+            title: "Matches",
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? styles.activeIconContainer : undefined}>
+                <Ionicons
+                  name={focused ? "people" : "people-outline"}
+                  color={color}
+                  size={24}
+                />
+              </View>
+            ),
+          }}
+        />
+      </Tabs>
+    );
+  } catch (err) {
+    console.log('[TabsLayout] Error:', err);
+    return (
+      <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#fff'}}>
+        <Ionicons name="alert" size={48} color="#FF3366" />
+        <View style={{height:16}} />
+        <Text style={{color:'red',fontSize:18}}>TabsLayout error: {String(err)}</Text>
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
