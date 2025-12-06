@@ -25,7 +25,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, focused }) => (
               <View style={focused ? styles.activeIconContainer : undefined}>
                 <Ionicons
-                  name={focused ? "heart" : "heart-outline"}
+                  name={focused ? "home" : "home-outline"}
                   color={color}
                   size={24}
                 />

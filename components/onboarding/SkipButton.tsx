@@ -10,6 +10,7 @@ type SkipButtonProps = {
     onSkip?: () => Promise<void> | void;
     /** Optional color override */
     color?: string;
+    style?: object;
 };
 
 export default function SkipButton({

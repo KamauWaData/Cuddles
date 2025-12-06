@@ -172,21 +172,6 @@ export default function ScheduledDates() {
           }
         />
 
-        {/* Floating Action Button 
-        <TouchableOpacity
-          onPress={() => router.push("/(main)/dates/ScheduleDate")}
-          style={styles.fab}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={["#ff69b4", "#ff1493"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
-          >
-            <Ionicons name="add" size={32} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>*/}
       </SafeAreaView>
     </LinearGradient>
   );

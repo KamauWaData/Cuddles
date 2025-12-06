@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { uploadToCloudinary } from "../../lib/cloudinary";
+import { useGalleryPermission } from "../../components/usePermissions";
 
 // Set your storage bucket name (change if different)
 const AVATAR_BUCKET = "avatars";
@@ -189,27 +190,10 @@ export default function MyProfile() {
 
   const age = computeAge(profile?.birthday);
 
-  // Returns a function that requests gallery/media library permission and resolves to boolean
-  function useGalleryPermission() {
-    // Lazy-load to avoid import at top-level (for SSR safety)
-    const { useState, useEffect } = React;
-    const [granted, setGranted] = useState<boolean | null>(null);
-
-    // Only import expo-image-picker when needed
-    const getPermission = async () => {
-      let ImagePicker;
-      try {
-        ImagePicker = require("expo-image-picker");
-      } catch {
-        return false;
-      }
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      return status === "granted";
-    };
-
-    // Return a function that requests permission when called
-    return getPermission;
-  }
+  // Use the shared hook from components/usePermissions
+  // If you want to keep the local version, move the call to the top level
+  // import { useGalleryPermission } from '../../components/usePermissions';
+  const requestGalleryPermission = useGalleryPermission ? useGalleryPermission() : async () => true;
 
   return (
     <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
@@ -222,9 +206,6 @@ export default function MyProfile() {
           <Text style={styles.headerTitle}>My Profile</Text>
           <View style={styles.headerSpacer} />
         </View>
-
-        
-
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -251,7 +232,7 @@ export default function MyProfile() {
                 activeOpacity={0.8}
               >
                 <View style={styles.editAvatarIcon}>
-                  <Ionicons name="camera" size={16} color="#FFFFFF" />
+                  <Ionicons name="pencil" size={16} color="#FFFFFF" />
                 </View>
               </TouchableOpacity>
             </View>
@@ -271,6 +252,7 @@ export default function MyProfile() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsRow}>
+            {/* Action Buttons 
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() =>
@@ -290,7 +272,7 @@ export default function MyProfile() {
                 <Ionicons name="create-outline" size={20} color="#FFFFFF" />
                 <Text style={styles.actionButtonText}>Edit</Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </TouchableOpacity>*/}
 
             <TouchableOpacity
               style={styles.actionButton}
@@ -347,7 +329,7 @@ export default function MyProfile() {
                 activeOpacity={0.8}
                 onPress={async () => {
                   try {
-                    const hasPermission = await useGalleryPermission()();
+                    const hasPermission = await requestGalleryPermission();
                     if (!hasPermission) return;
                     const result = await ImagePicker.launchImageLibraryAsync({
                       mediaTypes: ImagePicker.MediaTypeOptions.Images,

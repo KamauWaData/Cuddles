@@ -2,7 +2,7 @@
   "expo": {
     "name": "cuddles-app",
     "slug": "cuddles-app",
-      "scheme": "cuddles",
+    "scheme": "cuddles",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -31,10 +31,11 @@
     "extra": {
       "SUPABASE_URL": "https://hjoyrbecacivlfcnvnwc.supabase.co",
       "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb3lyYmVjYWNpdmxmY252bndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4OTg3OTIsImV4cCI6MjA3NDQ3NDc5Mn0.8aFWbemi6hyOMVlJVuOSAs4mgHcnDL-KjeIEM0WAkG8",
-      "BYPASS_AUTH": true 
+      "BYPASS_AUTH": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-maps"
     ]
   }
 }

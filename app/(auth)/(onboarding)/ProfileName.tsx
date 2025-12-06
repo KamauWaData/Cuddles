@@ -1,274 +1,265 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  Image,
+  TextInput,
   Alert,
-  Platform,
   ScrollView,
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  Image,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useGalleryPermission, useLocationPermission } from '../../../components/usePermissions';
 import DateTimePicker from "@react-native-community/datetimepicker";
-// Use the legacy import for readAsStringAsync to avoid the deprecated runtime behavior
 import * as FileSystem from "expo-file-system";
-import { readAsStringAsync as readAsStringAsyncLegacy } from "expo-file-system/legacy";
 import { supabase } from "../../../lib/supabase";
-import SkipButton from "../../../components/onboarding/SkipButton";
-import TextInputField from "../../../components/TextInputField";
-import { LinearGradient } from "expo-linear-gradient";
-
 
 export default function ProfileName() {
-  const [loading, setLoading] = useState(false);
-  const [navLoading, setNavLoading] = useState("");
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthdate, setBirthdate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [location, setLocation] = useState("");
-  const [coords, setCoords] = useState<{ latitude: number, longitude: number } | null>(null);
-  const requestGalleryPermission = useGalleryPermission();
-  const requestLocationPermission = useLocationPermission();
+  const router = useRouter();
+  const params = useLocalSearchParams();
 
-  // Handler for avatar upload
-  const handleAvatarUpload = async () => {
-    const hasPermission = await requestGalleryPermission();
-    if (!hasPermission) return;
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const [name, setName] = useState("");
+  const [birthday, setBirthday] = useState<Date | null>(null);
+
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [location, setLocation] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+
+  // ========= RECEIVE LOCATION + COORDS FROM SetLocation SCREEN ==========
+  useEffect(() => {
+    if (params.latitude && params.longitude) {
+      setCoords({
+        latitude: Number(params.latitude),
+        longitude: Number(params.longitude),
+      });
+    }
+    if (params.location) {
+      setLocation(params.location as string);
+    }
+  }, [params]);
+
+  // ========= PICK AVATAR ==========
+  const pickAvatar = async () => {
+    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!granted) {
+      Alert.alert("Permission needed", "Please grant gallery access.");
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      selectionLimit: 1,
       allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.8,
     });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
+
+    if (!result.canceled) {
       setAvatar(result.assets[0].uri);
     }
   };
 
-  // Handler for Set Location navigation
-  const handleSetLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) return;
-    // Navigate to SetLocation screen and handle callback via router event or context
-    router.push({ pathname: '/(screens)/SetLocation', params: {} });
-    // In a real app, use a context or event to get the result back
+  // ========= UPLOAD AVATAR TO SUPABASE STORAGE ==========
+  const uploadAvatar = async (localUri: string) => {
+    try {
+      setAvatarUploading(true);
+
+      const uid = (await supabase.auth.getUser()).data.user?.id;
+      if (!uid) throw new Error("User not logged in");
+
+      const fileExt = localUri.split(".").pop() || "jpg";
+      const filePath = `${uid}/avatar.${fileExt}`;
+      const base64 = await FileSystem.readAsStringAsync(localUri, {
+        encoding: "base64",
+      });
+
+      // Convert base64 to Uint8Array for React Native
+      const binaryString = atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, bytes, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (e: any) {
+      Alert.alert("Avatar Upload Error", e.message);
+      return null;
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
-  // Handler for continue
-  const handleContinue = async () => {
-    // Enforce 18+ check before allowing continue
-    if (!birthdate) {
-      Alert.alert('Please select your birthday.');
-      return;
-    }
+  // =============== VALIDATE 18 YEARS RULE =======================
+  const is18OrOlder = (date: Date) => {
     const today = new Date();
-    const minBirthdate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-    if (birthdate > minBirthdate) {
-      Alert.alert('You must be at least 18 years old to use Cuddles.');
-      return;
-    }
-    setLoading(true);
+    const minAgeDate = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
+    return date <= minAgeDate;
+  };
+
+  // ========= CONTINUE / SAVE PROFILE ==========
+  const handleContinue = async () => {
     try {
-      // Get user id
-      let { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        Alert.alert("Authentication error", "Please sign in again.");
+      setLoading(true);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (!uid) throw new Error("No authenticated user");
+
+      if (!name.trim()) {
+        Alert.alert("Missing name", "Please enter your name.");
         return;
       }
-      const uid = userData.user.id;
-      let profileData: any = {
+
+      if (!birthday || !is18OrOlder(birthday)) {
+        Alert.alert("Invalid birthday", "You must be at least 18 years old.");
+        return;
+      }
+
+      if (!coords || !location) {
+        Alert.alert("Missing location", "Please select your location.");
+        return;
+      }
+
+      let avatarUrl = null;
+      if (avatar) {
+        avatarUrl = await uploadAvatar(avatar);
+        if (!avatarUrl) return;
+      }
+
+      const profileData = {
         id: uid,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        birthday: birthdate ? birthdate.toISOString().split("T")[0] : null,
-        avatar: avatar,
-        profile_complete: false
+        full_name: name.trim(),
+        avatar: avatarUrl,
+        birthday: birthday.toISOString(),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        location: location,
+        profile_complete: true,
+        updated_at: new Date().toISOString(),
       };
-      if (coords) {
-        profileData.latitude = coords.latitude;
-        profileData.longitude = coords.longitude;
-        profileData.location = location;
-      }
-      const { error } = await supabase.from("profiles").upsert([profileData]);
-      if (error) {
-        Alert.alert("Profile error", error.message);
+
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(profileData);
+
+      if (upsertError) {
+        console.log("Profile Insert Error:", upsertError);
+        Alert.alert("Profile Error", upsertError.message);
         return;
       }
-      router.push({ pathname: "/(auth)/(onboarding)/Gender", params: { uid } });
-    } catch (err) {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+
+      router.replace("/(main)/Home");
+    } catch (e: any) {
+      Alert.alert("Error", e.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1"
-    >
-      <ScrollView className="flex-1 px-6 pt-12 bg-white" keyboardShouldPersistTaps="handled">
-        <Text className="text-3xl font-bold text-gray-900 mb-3">Welcome!</Text>
-        <Text className="text-gray-600 text-base mb-2">Let's get to know you a little better</Text>
-        <Text className="text-xs text-red-500 mb-8 font-semibold">18+ Only. You must be at least 18 years old to use Cuddles.</Text>
-        {/* Avatar */}
-        <TouchableOpacity
-          onPress={handleAvatarUpload}
-          className="self-center mb-4"
-          activeOpacity={loading ? 1 : 0.7}
-          disabled={loading}
-        >
-          {avatar ? (
-            <View className="relative">
-              <Image
-                source={{ uri: avatar }}
-                style={{ width: 140, height: 140, borderRadius: 70, opacity: loading ? 0.5 : 1 }}
-              />
-              <View className="absolute bottom-0 right-0 bg-pink-500 rounded-full p-3">
-                <Text className="text-white text-xs">📷</Text>
-              </View>
-            </View>
-          ) : (
-            <View className="w-36 h-36 bg-gray-200 rounded-full items-center justify-center">
-              <Text className="text-4xl">📷</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        {/* Set Location */}
-        <TouchableOpacity
-          onPress={handleSetLocation}
-          className="bg-blue-100 px-4 py-2 rounded-lg self-center mb-2"
-        >
-          <Text className="text-blue-700">Set Location</Text>
-        </TouchableOpacity>
-        {location ? <Text className="text-center text-gray-600 mb-2">{location}</Text> : null}
-        {/* Name fields */}
-        <TextInputField
-          label="First Name"
-          placeholder="e.g., Sarah"
-          value={firstName}
-          onChangeText={setFirstName}
-          autoCapitalize="words"
-        />
-        <TextInputField
-          label="Last Name"
-          placeholder="e.g., Johnson"
-          value={lastName}
-          onChangeText={setLastName}
-          autoCapitalize="words"
-        />
-        {/* Birthday picker */}
-        <View className="mb-6">
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
-            <Text className="text-base text-gray-700 mb-2">Birthday</Text>
-            <View className="border p-3 rounded bg-gray-50">
-              <Text>{birthdate ? birthdate.toDateString() : "Select your birthday"}</Text>
-            </View>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={birthdate || new Date()}
-              mode="date"
-              display="default"
-              onChange={(_event: any, date?: Date) => {
-                setShowDatePicker(false);
-                if (date) {
-                  // Enforce 18+ age
-                  const today = new Date();
-                  const minBirthdate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-                  if (date > minBirthdate) {
-                    Alert.alert('You must be at least 18 years old to use Cuddles.');
-                    setBirthdate(null);
-                  } else {
-                    setBirthdate(date);
-                  }
-                }
-              }}
-              maximumDate={new Date()}
-            />
-          )}
-        </View>
-        {/* Continue button */}
-        <TouchableOpacity
-          className="bg-pink-500 py-4 rounded-lg mt-8 mb-4"
-          onPress={handleContinue}
-          activeOpacity={loading ? 1 : 0.7}
-          disabled={loading}
-        >
-          <Text className="text-white text-center text-lg font-bold">{loading ? "Please wait..." : "Continue"}</Text>
-        </TouchableOpacity>
-        <SkipButton
-          to="/(auth)/(onboarding)/Gender"
-        />
-        <View className="w-full h-1 bg-gray-200 mb-10 rounded-full overflow-hidden">
-          <View className="h-full bg-pink-500 w-1/3" />
-        </View>
-        {/* Add navigation to verification, safety, and profile improvements */}
-        <TouchableOpacity
-          onPress={() => {
-            setNavLoading("verification");
-            router.push("/(screens)/verification/VerificationIntro");
-            setTimeout(() => setNavLoading("") , 500);
-          }}
-          className="bg-purple-100 py-3 rounded-lg mb-3"
-          activeOpacity={navLoading === "verification" ? 1 : 0.7}
-          disabled={!!navLoading}
-        >
-          <Text className="text-purple-700 text-center font-semibold">{navLoading === "verification" ? "Loading..." : "Go to Verification"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            setNavLoading("safety");
-            router.push("/(screens)/safety/SafetyTips");
-            setTimeout(() => setNavLoading("") , 500);
-          }}
-          className="bg-yellow-100 py-3 rounded-lg mb-3"
-          activeOpacity={navLoading === "safety" ? 1 : 0.7}
-          disabled={!!navLoading}
-        >
-          <Text className="text-yellow-700 text-center font-semibold">{navLoading === "safety" ? "Loading..." : "View Safety Tips"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            setNavLoading("badges");
-            router.push("/(screens)/profile-improvements/ProfileBadges");
-            setTimeout(() => setNavLoading("") , 500);
-          }}
-          className="bg-blue-100 py-3 rounded-lg mb-3"
-          activeOpacity={navLoading === "badges" ? 1 : 0.7}
-          disabled={!!navLoading}
-        >
-          <Text className="text-blue-700 text-center font-semibold">{navLoading === "badges" ? "Loading..." : "See Profile Badges"}</Text>
-        </TouchableOpacity>
-        {/* Birthday DateTimePicker */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={birthdate || new Date()}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            maximumDate={new Date()}
-            onChange={(_event: any, date?: Date) => {
-              if (Platform.OS !== "ios") setShowDatePicker(false);
-              if (date) setBirthdate(date);
-            }}
-          />
-        )}
-      {/* Continue Button */}
+    <ScrollView className="flex-1 bg-white p-6">
+      <Text className="text-2xl font-bold mb-6">Complete Your Profile</Text>
+
+      {/* Avatar */}
       <TouchableOpacity
-        onPress={handleContinue}
-        activeOpacity={0.85}
-        className="bg-pink-500 py-4 rounded-lg mt-8 mb-4"
-        disabled={loading}
+        className="self-center w-32 h-32 rounded-full bg-gray-200 overflow-hidden mb-6"
+        onPress={pickAvatar}
       >
-        <Text className="text-white text-center text-lg font-bold">{loading ? "Please wait..." : "Continue"}</Text>
+        {avatar ? (
+          <Image source={{ uri: avatar }} className="w-full h-full" />
+        ) : (
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-gray-500">Pick Photo</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Name */}
+      <Text className="mb-1 font-semibold">Your Name</Text>
+      <TextInput
+        className="border border-gray-300 rounded-xl p-3 mb-6"
+        placeholder="Enter your name"
+        value={name}
+        onChangeText={setName}
+      />
+
+      {/* Birthday */}
+      <Text className="mb-1 font-semibold">Birthday</Text>
+      <TouchableOpacity
+        onPress={() => setDatePickerVisible(true)}
+        className="border border-gray-300 rounded-xl p-3 mb-6"
+      >
+        <Text className="text-gray-600">
+          {birthday ? birthday.toDateString() : "Select your birthday"}
+        </Text>
+      </TouchableOpacity>
+
+      {datePickerVisible && (
+        <DateTimePicker
+          mode="date"
+          value={birthday || new Date(2000, 0, 1)}
+          display="spinner"
+          onChange={(event, date) => {
+            setDatePickerVisible(false);
+            if (date) setBirthday(date);
+          }}
+          maximumDate={new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
+        />
+      )}
+
+      {/* Location */}
+      <Text className="mb-1 font-semibold">Location</Text>
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: "/(screens)/SetLocation",
+            params: { returnTo: "ProfileName" },
+          })
+        }
+        className="border border-gray-300 rounded-xl p-3 mb-6"
+      >
+        <Text className="text-gray-600">
+          {location || "Set your location"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Continue */}
+      <TouchableOpacity
+        disabled={loading || avatarUploading}
+        onPress={handleContinue}
+        className="bg-[#FF3366] p-4 rounded-xl mt-4"
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-center text-white font-semibold text-lg">
+            Continue
+          </Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
-  </KeyboardAvoidingView>
   );
 }

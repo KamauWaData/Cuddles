@@ -1,44 +1,81 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import * as Location from 'expo-location';
-import { useLocationPermission } from '../../components/usePermissions';
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { MapView, Marker } from "expo-maps";
+import * as Location from "expo-location";
+import { useLocationPermission } from "../../components/usePermissions";
 
-export default function SetLocationScreen({ onLocationSet }: { onLocationSet?: (coords: { latitude: number, longitude: number }) => void }) {
-  const [location, setLocation] = useState<{ latitude: number, longitude: number } | null>(null);
+interface SetLocationScreenProps {
+  onLocationSet?: (location: { latitude: number; longitude: number }) => void;
+}
+
+export default function SetLocationScreen({ onLocationSet }: SetLocationScreenProps) {
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const requestLocationPermission = useLocationPermission();
 
-  const handleGetLocation = async () => {
+  const getGpsLocation = async () => {
     setLoading(true);
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) { setLoading(false); return; }
+
+    const hasPerm = await requestLocationPermission();
+    if (!hasPerm) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setLocation({ latitude: coords.latitude, longitude: coords.longitude });
-      if (onLocationSet) onLocationSet({ latitude: coords.latitude, longitude: coords.longitude });
-      Alert.alert('Location set!', `Lat: ${coords.latitude}, Lng: ${coords.longitude}`);
-    } catch (err) {
-      Alert.alert('Error', 'Could not get location.');
+      const { coords } = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+      });
+
+      const loc = { latitude: coords.latitude, longitude: coords.longitude };
+      setLocation(loc);
+      onLocationSet?.(loc);
+    } catch (e) {
+      Alert.alert("Error", "Unable to get your location.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMapPress = (e: { nativeEvent: { coordinate: { latitude: any; longitude: any; }; }; }) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    const loc = { latitude, longitude };
+    setLocation(loc);
+    onLocationSet?.(loc);
+  };
+
   return (
-    <View className="flex-1 justify-center items-center bg-white p-6">
-      <Text className="text-2xl font-bold mb-4">Set Your Location</Text>
+    <View className="flex-1 bg-white">
+      <Text className="text-2xl font-bold text-center mt-8 mb-4">Set Your Location</Text>
+
+      {/* MAP */}
+      <View className="flex-1 px-4">
+        <MapView
+          style={{ flex: 1, borderRadius: 16 }}
+          initialRegion={{
+            latitude: location?.latitude || -1.286389,
+            longitude: location?.longitude || 36.817223,
+            latitudeDelta: 0.04,
+            longitudeDelta: 0.04,
+          }}
+          onPress={handleMapPress}
+        >
+          {location && <Marker coordinate={location} />}
+        </MapView>
+      </View>
+
+      {/* GPS BUTTON */}
       <TouchableOpacity
-        onPress={handleGetLocation}
-        className="bg-pink-500 px-6 py-3 rounded-lg mb-4"
+        className="bg-pink-500 mx-6 py-4 rounded-xl my-6"
+        onPress={getGpsLocation}
         disabled={loading}
-        activeOpacity={loading ? 1 : 0.8}
       >
-        <Text className="text-white font-bold text-lg">{loading ? 'Locating...' : 'Use My Current Location'}</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-white font-bold text-center">Use My Current Location</Text>
+        )}
       </TouchableOpacity>
-      {location && (
-        <Text className="text-gray-700">Lat: {location.latitude}, Lng: {location.longitude}</Text>
-      )}
-      {/* TODO: Add map picker and address search here */}
     </View>
   );
 }
