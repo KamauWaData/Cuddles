@@ -12,29 +12,50 @@ export default function Settings() {
         router.replace("/(auth)/login");
     };
 
-    const deleteAccount = () => {
-        Alert.alert("Delete account", "This will remove your account. Are you sure you want to continue?", [
+    // Client-side code (in your deleteAccount function)
+
+const deleteAccount = () => {
+    Alert.alert(
+        "Delete Account", 
+        "Your account will be deactivated and permanently deleted in 30 days. You can sign back in before then to cancel deletion. Are you sure?", 
+        [
             { text: "Cancel", style: "cancel" },
             {
-                text: "Delete",
+                text: "Deactivate",
                 style: "destructive",
                 onPress: async () => {
                     try {
                         const { data: userData } = await supabase.auth.getUser();
                         const uid = userData?.user?.id;
                         if (!uid) return;
-                        // delete profile row & related data (depends on cascade)
-                        await supabase.from("profiles").delete().eq("id", uid);
-                        await supabase.auth.api.deleteUser(uid);
+
+                        // 1. Soft-Delete: Mark the user's profile with the current timestamp
+                        const { error: updateError } = await supabase
+                            .from("profiles")
+                            .update({
+                                is_active: false, // Optional: for immediate deactivation/hiding
+                                deleted_at: new Date().toISOString(), // Record deletion request time
+                            })
+                            .eq("id", uid);
+                        
+                        if (updateError) throw updateError;
+                        
+                        // 2. Sign the user out locally
+                        await supabase.auth.signOut(); 
+                        
+                        Alert.alert("Account Deactivated", "You have 30 days to sign back in and recover your account.");
+                        
+                        // 3. Redirect to login
                         router.replace("/(auth)/login");
                     } catch (err) {
-                        Alert.alert("Delete failed");
+                        console.error("Deactivation failed:", err);
+                        Alert.alert("Error", "Account deactivation failed.");
                     }
                 }
-
             }
-        ]);
-    };
+        ]
+    );
+};
 
     return (
         <View style={{ flex: 1, backgroundColor: "#fff", padding: 16 }}>

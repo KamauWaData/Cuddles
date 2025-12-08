@@ -34,8 +34,7 @@
       "BYPASS_AUTH": true
     },
     "plugins": [
-      "expo-router",
-      "expo-maps"
+      "expo-router"
     ]
   }
 }

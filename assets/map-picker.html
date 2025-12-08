@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+    <style>
+      html, body, #map {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #centerMarker {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -100%);
+        font-size: 32px;
+        color: red;
+      }
+      #confirm {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ff4081;
+        color: white;
+        font-size: 18px;
+        padding: 12px 18px;
+        border-radius: 8px;
+      }
+    </style>
+
+    <script>
+      let map;
+
+      function initMap() {
+        const defaultPos = { lat: -1.286389, lng: 36.817223 };
+
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: defaultPos,
+          zoom: 15,
+          disableDefaultUI: true,
+        });
+      }
+
+      function sendLocation() {
+        const center = map.getCenter();
+        const data = {
+          lat: center.lat(),
+          lng: center.lng(),
+        };
+        window.ReactNativeWebView.postMessage(JSON.stringify(data));
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="map"></div>
+    <div id="centerMarker">📍</div>
+
+    <button id="confirm" onclick="sendLocation()">Confirm Location</button>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY&callback=initMap"></script>
+  </body>
+</html>

@@ -2,6 +2,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import BrandedLoading from "../components/BrandedLoading";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -59,5 +60,12 @@ export default function RootLayout() {
 
   if (checking) return <BrandedLoading message="Connecting..." />;
 
-  return <Slot />;
+  return( 
+    <GestureHandlerRootView style={{ flex: 1 }}>
+  
+      <Slot />
+
+    </GestureHandlerRootView>
+
+);
 }
