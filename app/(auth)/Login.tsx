@@ -18,7 +18,9 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
+
     console.log('LoginScreen mounted');
+      
   }, []);
 
   const isValidEmail = (e: string) =>
@@ -59,7 +61,7 @@ export default function LoginScreen() {
         return Alert.alert('Login failed', error.message);
       }
       console.log('login success', data);
-      router.replace('/(main)/Home');
+      router.replace('/(main)/');
     } catch (err) {
       console.error('unexpected login error', err);
       Alert.alert('Login failed', String(err));

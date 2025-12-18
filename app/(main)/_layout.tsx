@@ -19,7 +19,7 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen
-          name="Home"
+          name="index"
           options={{
             title: "Discover",
             tabBarIcon: ({ color, focused }) => (
@@ -27,7 +27,7 @@ export default function TabsLayout() {
                 <Ionicons
                   name={focused ? "home" : "home-outline"}
                   color={color}
-                  size={24}
+                  size={18}
                 />
               </View>
             ),
@@ -42,7 +42,7 @@ export default function TabsLayout() {
                 <Ionicons
                   name={focused ? "calendar" : "calendar-outline"}
                   color={color}
-                  size={24}
+                  size={18}
                 />
               </View>
             ),
@@ -57,7 +57,7 @@ export default function TabsLayout() {
                 <Ionicons
                   name={focused ? "chatbubble" : "chatbubble-outline"}
                   color={color}
-                  size={24}
+                  size={18}
                 />
               </View>
             ),
@@ -72,7 +72,7 @@ export default function TabsLayout() {
                 <Ionicons
                   name={focused ? "people" : "people-outline"}
                   color={color}
-                  size={24}
+                  size={18}
                 />
               </View>
             ),

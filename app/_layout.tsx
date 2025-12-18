@@ -46,7 +46,7 @@ export default function RootLayout() {
 
       // 4) LOGGED IN + ONBOARDED → FORCE MAIN SCREENS
       if (root === "(auth)") {
-        router.replace("/(main)/Home");
+        router.replace("/(main)");
       }
 
       setChecking(false);
