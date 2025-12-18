@@ -1,131 +1,263 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Buffer } from "buffer";
+import * as FileSystem from "expo-file-system";
+
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ScrollView,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../../lib/supabase";
+import { useGalleryPermission, useLocationPermission } from "../../../components/usePermissions";
 
 export default function EditProfile() {
-  const { user } = useLocalSearchParams();
+  const params = useLocalSearchParams();
   const router = useRouter();
-  const parsedUser = user ? JSON.parse(user as string) : {};
 
+  const parsedUser = params.user ? JSON.parse(params.user as string) : {};
+
+  // --------------------------
+  // STATE
+  // --------------------------
   const [firstName, setFirstName] = useState(parsedUser.firstName || "");
   const [lastName, setLastName] = useState(parsedUser.lastName || "");
+  const [about, setAbout] = useState(parsedUser.about || "");
   const [avatar, setAvatar] = useState(parsedUser.avatar || "");
   const [gender, setGender] = useState(parsedUser.gender || "");
   const [birthdate, setBirthdate] = useState(
     parsedUser.birthday ? new Date(parsedUser.birthday) : new Date()
   );
-  const [interests, setInterests] = useState(parsedUser.interests || []);
+  const [location, setLocation] = useState(parsedUser.location || "");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const requestGalleryPermission = useGalleryPermission();
+  const requestLocationPermission = useLocationPermission();
+
+  // --------------------------
+  // PICK AVATAR → Upload to Supabase Storage
+  // --------------------------
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 0.7,
+  // Request permission
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert("Permission needed", "Allow gallery access to pick images.");
+    return;
+  }
+
+  // Launch picker
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,  // <-- fixed
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.7,
+  });
+
+  if (result.canceled) return;
+
+  const asset = result.assets[0];
+
+  // Convert URI to Base64 (new expo format)
+  const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+    encoding: "base64",   // <--- FIXED
+  });
+
+  const fileName = `avatar-${parsedUser.id}-${Date.now()}.jpg`;
+  const fileBytes = Buffer.from(base64, "base64");
+
+  // Upload to Supabase
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(fileName, fileBytes, {
+      upsert: true,
+      contentType: "image/jpeg",
     });
-    if (result.canceled) return;
 
-    const file = result.assets[0];
-    const CLOUD_NAME = "dre7tjrrp";
-    const UPLOAD_PRESET = "my_avatar_preset";
+  if (uploadError) {
+    console.log(uploadError);
+    Alert.alert("Upload failed", "Could not upload avatar");
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append("file", {
-      uri: file.uri,
-      type: "image/jpeg",
-      name: "avatar.jpg",
-    } as any);
-    formData.append("upload_preset", UPLOAD_PRESET);
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
 
-    const upload = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: "POST",
-      body: formData,
-    });
-    const data = await upload.json();
-    setAvatar(data.secure_url);
-  };
+  setAvatar(urlData.publicUrl);
+};
 
+  // --------------------------
+  // Return location from SetLocation screen
+  // --------------------------
+  useEffect(() => {
+    if (params.latitude && params.longitude) {
+      setCoords({
+        latitude: Number(params.latitude),
+        longitude: Number(params.longitude),
+      });
+      setLocation(`Lat: ${params.latitude}, Lng: ${params.longitude}`);
+    }
+  }, [params.latitude, params.longitude]);
+
+  // --------------------------
+  // SAVE PROFILE
+  // --------------------------
   const handleSave = async () => {
     if (!firstName || !lastName) {
-      Alert.alert("Please fill in your name");
+      Alert.alert("Missing Fields", "Please fill in your name.");
       return;
     }
 
-    const { error } = await supabase.from("users").upsert({
+    const profileData: any = {
       id: parsedUser.id,
       firstName,
       lastName,
       avatar,
       gender,
+      about,
       birthday: birthdate.toISOString().split("T")[0],
-      interests,
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    if (coords) {
+      profileData.latitude = coords.latitude;
+      profileData.longitude = coords.longitude;
+      profileData.location = location;
+    }
+
+    const { error } = await supabase.from("users").upsert(profileData);
 
     if (error) {
-      console.error(error);
-      Alert.alert("Failed to save profile");
-    } else {
-      Alert.alert("Profile updated!");
-      router.back();
+      console.log(error);
+      Alert.alert("Failed", "Profile update failed.");
+      return;
     }
+
+    Alert.alert("Success", "Profile updated!");
+    router.back();
   };
 
   return (
-    <ScrollView className="flex-1 bg-white p-6">
-      <TouchableOpacity onPress={pickImage} className="self-center mb-4">
+    <ScrollView className="flex-1 bg-gray-50 p-6">
+      {/* Avatar */}
+      <TouchableOpacity onPress={pickImage} className="self-center mb-6">
         <Image
-          source={{ uri: avatar || "https://placehold.co/100x100?text=Avatar" }}
-          style={{ width: 100, height: 100, borderRadius: 50 }}
+          source={{ uri: avatar || "https://placehold.co/120x120?text=Avatar" }}
+          style={{ width: 120, height: 120, borderRadius: 60 }}
         />
-        <Text className="text-center text-pink-600 mt-2">Change Photo</Text>
+        <Text className="text-center text-pink-600 mt-2 font-semibold">
+          Change Photo
+        </Text>
       </TouchableOpacity>
 
-      <TextInput
-        placeholder="First Name"
-        value={firstName}
-        onChangeText={setFirstName}
-        className="border p-3 rounded mb-3"
-      />
+      {/* Card */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
+        <Text className="text-gray-800 font-bold text-lg mb-2">Basic Info</Text>
 
-      <TextInput
-        placeholder="Last Name"
-        value={lastName}
-        onChangeText={setLastName}
-        className="border p-3 rounded mb-3"
-      />
-
-      <TouchableOpacity onPress={() => setShowDatePicker(true)} className="border p-3 rounded mb-3">
-        <Text>{birthdate.toDateString()}</Text>
-      </TouchableOpacity>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={birthdate}
-          mode="date"
-          display="spinner"
-          onChange={(event, date) => {
-            setShowDatePicker(false);
-            if (date) setBirthdate(date);
-          }}
+        <TextInput
+          placeholder="First Name"
+          value={firstName}
+          onChangeText={setFirstName}
+          className="border border-gray-200 p-3 rounded-xl mb-3"
         />
-      )}
 
-      <TextInput
-        placeholder="Gender"
-        value={gender}
-        onChangeText={setGender}
-        className="border p-3 rounded mb-3"
-      />
+        <TextInput
+          placeholder="Last Name"
+          value={lastName}
+          onChangeText={setLastName}
+          className="border border-gray-200 p-3 rounded-xl mb-3"
+        />
 
+        {/* Gender Pills */}
+        <Text className="text-gray-700 font-medium mb-2">Gender</Text>
+        <View className="flex-row mb-3">
+          {["Male", "Female", "Other"].map((g) => (
+            <TouchableOpacity
+              key={g}
+              onPress={() => setGender(g)}
+              className={`px-4 py-2 mr-2 rounded-full ${
+                gender === g ? "bg-pink-500" : "bg-gray-100"
+              }`}
+            >
+              <Text
+                className={
+                  gender === g ? "text-white font-semibold" : "text-gray-700"
+                }
+              >
+                {g}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Birthday */}
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          className="border border-gray-200 p-3 rounded-xl mb-3"
+        >
+          <Text className="text-gray-700">{birthdate.toDateString()}</Text>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={birthdate}
+            mode="date"
+            display="spinner"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) setBirthdate(date);
+            }}
+          />
+        )}
+      </View>
+
+      {/* ABOUT */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
+        <Text className="text-gray-800 font-bold text-lg mb-2">About You</Text>
+        <TextInput
+          placeholder="Write something about yourself..."
+          value={about}
+          onChangeText={setAbout}
+          multiline
+          className="border border-gray-200 p-3 rounded-xl h-32 text-gray-800"
+        />
+      </View>
+
+      {/* LOCATION */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
+        <Text className="text-gray-800 font-bold text-lg mb-2">Location</Text>
+
+        <TouchableOpacity
+          onPress={() => router.push("/(screens)/SetLocation")}
+          className="bg-blue-100 px-4 py-3 rounded-xl mb-2"
+        >
+          <Text className="text-blue-700 font-semibold">Choose Location</Text>
+        </TouchableOpacity>
+
+        {location ? (
+          <Text className="text-gray-600">{location}</Text>
+        ) : (
+          <Text className="text-gray-400 italic">No location set</Text>
+        )}
+      </View>
+
+      {/* SAVE BUTTON */}
       <TouchableOpacity
         onPress={handleSave}
-        className="bg-pink-500 p-4 rounded mt-4"
+        className="bg-pink-500 p-4 rounded-xl mb-10"
       >
-        <Text className="text-center text-white font-bold">Save Changes</Text>
+        <Text className="text-center text-white font-bold text-lg">
+          Save Changes
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );

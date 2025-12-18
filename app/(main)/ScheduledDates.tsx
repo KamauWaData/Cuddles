@@ -75,7 +75,7 @@ export default function ScheduledDates() {
             <Text style={styles.headerSubtitle}>{items.length} upcoming date{items.length !== 1 ? "s" : ""}</Text>
           </View>
           <TouchableOpacity
-            onPress={() => router.push("/(main)/dates/ScheduleDate")}
+            onPress={() => router.push("/(screens)/dates/ScheduleDate")}
             style={styles.headerButton}
             activeOpacity={0.8}
           >
@@ -86,6 +86,21 @@ export default function ScheduledDates() {
               style={styles.buttonGradient}
             >
               <Ionicons name="add" size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/dates/MyDates")}
+            style={styles.headerButton}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["#ff69b4", "#ff1493"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.buttonGradient}
+            >
+              <Ionicons name="albums" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -157,21 +172,6 @@ export default function ScheduledDates() {
           }
         />
 
-        {/* Floating Action Button */}
-        <TouchableOpacity
-          onPress={() => router.push("/(main)/dates/ScheduleDate")}
-          style={styles.fab}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={["#ff69b4", "#ff1493"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
-          >
-            <Ionicons name="add" size={32} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
       </SafeAreaView>
     </LinearGradient>
   );

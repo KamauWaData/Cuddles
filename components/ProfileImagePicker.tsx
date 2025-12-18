@@ -2,16 +2,20 @@
 import { View, Image, TouchableOpacity, Text } from 'react-native';
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import { useGalleryPermission } from './usePermissions';
+
 
 export default function ProfileImagePicker({ onImagePicked }: { onImagePicked: (uri: string) => void }) {
   const [image, setImage] = useState<string | null>(null);
+  const requestGalleryPermission = useGalleryPermission();
 
   const pickImage = async () => {
+    const hasPermission = await requestGalleryPermission();
+    if (!hasPermission) return;
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
     });
-
     if (!result.canceled && result.assets[0]) {
       setImage(result.assets[0].uri);
       onImagePicked(result.assets[0].uri);
