@@ -162,18 +162,33 @@ export default function MyProfile() {
 
   // Navigation buttons for verification, safety, and profile improvements
   const NavigationButtons = () => (
-    <View style={{ marginVertical: 16 }}>
-      <TouchableOpacity onPress={() => router.push("/(screens)/verification/VerificationIntro")}
-        style={{ backgroundColor: "#f3e8ff", padding: 12, borderRadius: 10, marginBottom: 8 }}>
-        <Text style={{ color: "#7c3aed", textAlign: "center", fontWeight: "600" }}>Go to Verification</Text>
+    <View style={{ marginVertical: 20, gap: 10 }}>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/verification/VerificationIntro")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="shield-checkmark" size={20} color="#7c3aed" />
+        <Text style={styles.navButtonText}>Go to Verification</Text>
+        <Ionicons name="chevron-forward" size={18} color="#7c3aed" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push("/(screens)/safety/SafetyTips")}
-        style={{ backgroundColor: "#fef9c3", padding: 12, borderRadius: 10, marginBottom: 8 }}>
-        <Text style={{ color: "#ca8a04", textAlign: "center", fontWeight: "600" }}>View Safety Tips</Text>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/safety/SafetyTips")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="warning" size={20} color="#ca8a04" />
+        <Text style={styles.navButtonText}>View Safety Tips</Text>
+        <Ionicons name="chevron-forward" size={18} color="#ca8a04" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push("/(screens)/profile-improvements/ProfileBadges")}
-        style={{ backgroundColor: "#dbeafe", padding: 12, borderRadius: 10 }}>
-        <Text style={{ color: "#2563eb", textAlign: "center", fontWeight: "600" }}>See Profile Badges</Text>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/profile-improvements/ProfileBadges")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="star" size={20} color="#2563eb" />
+        <Text style={styles.navButtonText}>See Profile Badges</Text>
+        <Ionicons name="chevron-forward" size={18} color="#2563eb" />
       </TouchableOpacity>
     </View>
   );
@@ -501,12 +516,12 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: "center",
-    marginTop: 16,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 28,
   },
   avatarContainer: {
     position: "relative",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   avatarImage: {
     width: 140,
@@ -547,10 +562,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   locationRow: {
     flexDirection: "row",
@@ -558,14 +573,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#6B7280",
     fontWeight: "500",
   },
   actionButtonsRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   actionButton: {
     flex: 1,
@@ -609,13 +624,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
@@ -635,12 +650,12 @@ const styles = StyleSheet.create({
   sectionContent: {
     fontSize: 15,
     color: "#6B7280",
-    lineHeight: 22,
+    lineHeight: 24,
   },
   interestsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   interestChip: {
     backgroundColor: "#FFFFFF",
@@ -663,7 +678,7 @@ const styles = StyleSheet.create({
   galleryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   galleryItem: {
     width: "31%",
@@ -687,7 +702,7 @@ const styles = StyleSheet.create({
     borderColor: "#FEE2E2",
     backgroundColor: "#FEF2F2",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 28,
   },
   logoutButtonText: {
     color: "#DC2626",
@@ -714,5 +729,25 @@ const styles = StyleSheet.create({
     zIndex: 2,
     backgroundColor: 'white',
     borderRadius: 14,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  navButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });

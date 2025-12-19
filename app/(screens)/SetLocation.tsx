@@ -1,17 +1,20 @@
 // /app/SetLocationScreen.js (Modified)
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    Alert,
-    ActivityIndicator,
-    StyleSheet,
-} from "react-native";
-import * as Location from "expo-location";
-import { useRouter, useLocalSearchParams } from "expo-router"; // 🚨 Added useLocalSearchParams
-import StaticMapPreview from "../../components/StaticMapPreview"; // Static map component
-import { supabase } from "../../lib/supabase"; // Your Supabase client
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
+import * as Location from 'expo-location';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import StaticMapPreview from '../../components/StaticMapPreview';
+import { supabase } from '../../lib/supabase';
 
 interface LocationType {
     latitude: number;
@@ -141,77 +144,242 @@ export default function SetLocationScreen() {
       }
   };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Set Your Location</Text>
+  return (
+    <LinearGradient colors={['#FFF0F5', '#FFFFFF', '#FFF5F7']} style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={28} color="#FF3366" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Set Location</Text>
+            <Text style={styles.headerSubtitle}>Pin your location on the map</Text>
+          </View>
+        </View>
 
-            <TouchableOpacity onPress={openMapPicker} activeOpacity={0.8} style={styles.mapContainer}>
-                {loading ? (
-                    <View style={styles.mapPlaceholder}>
-                        <ActivityIndicator size="large" color="#ff4081" />
-                        <Text style={{ marginTop: 10 }}>Getting initial GPS...</Text>
-                    </View>
-                ) : location ? (
-                    <StaticMapPreview lat={location.latitude} lng={location.longitude} />
-                ) : (
-                    <View style={styles.mapPlaceholder}>
-                        <Text>Tap to Select Location on Map</Text>
-                    </View>
-                )}
-            </TouchableOpacity>
-            
-            {location && (
-                <Text style={styles.coordinates}>
-                    Coordinates: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                </Text>
+        {/* Map Section */}
+        <View style={styles.mapSection}>
+          <TouchableOpacity
+            onPress={openMapPicker}
+            activeOpacity={0.9}
+            style={styles.mapContainer}
+          >
+            {loading ? (
+              <View style={styles.mapPlaceholder}>
+                <ActivityIndicator size="large" color="#FF3366" />
+                <Text style={styles.placeholderText}>Getting GPS location...</Text>
+              </View>
+            ) : location ? (
+              <StaticMapPreview lat={location.latitude} lng={location.longitude} />
+            ) : (
+              <View style={styles.mapPlaceholder}>
+                <Ionicons name="map-outline" size={48} color="#FFB4C1" />
+                <Text style={styles.placeholderText}>Tap to select location</Text>
+              </View>
             )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Info Card */}
+        {location && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoLabel}>Coordinates</Text>
+                <Text style={styles.infoValue}>
+                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                </Text>
+              </View>
+            </View>
 
             {address && (
-                <Text style={styles.address}>{address}</Text>
+              <View style={[styles.infoRow, { marginTop: 12 }]}>
+                <Ionicons name="location" size={20} color="#FF3366" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue}>{address}</Text>
+                </View>
+              </View>
             )}
+          </View>
+        )}
 
-            <TouchableOpacity
-                style={[styles.button, (loading || !location) && { opacity: 0.7 }]}
-                onPress={saveLocation}
-                disabled={loading || !location}
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            onPress={openMapPicker}
+            style={[styles.secondaryButton, loading && { opacity: 0.6 }]}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="map" size={18} color="#FF3366" />
+            <Text style={styles.secondaryButtonText}>Change Location</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={saveLocation}
+            disabled={loading || !location}
+            style={[
+              styles.primaryButton,
+              (loading || !location) && { opacity: 0.6 },
+            ]}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FF3366', '#FF6B8A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
             >
-                {loading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>Save Location</Text>
-                )}
-            </TouchableOpacity>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.primaryButtonText}>Save Location</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-    );
+      </SafeAreaView>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: "white" },
-    title: { fontSize: 24, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
-    mapContainer: { 
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    mapPlaceholder: {
-        width: "100%",
-        height: 200,
-        backgroundColor: "#eee",
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 12,
-    },
-    coordinates: {
-        marginTop: 10,
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-    },
-    address: { marginTop: 16, fontSize: 16, color: "#444", textAlign: "center", fontWeight: 'bold' },
-    button: {
-        marginTop: 24,
-        backgroundColor: "#ff4081",
-        paddingVertical: 14,
-        borderRadius: 12,
-    },
-    buttonText: { color: "white", fontWeight: "bold", fontSize: 18, textAlign: "center" },
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  mapSection: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  mapContainer: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  placeholderText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  infoCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    lineHeight: 20,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  primaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#FF3366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  primaryButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#FFE4E6',
+  },
+  secondaryButtonText: {
+    color: '#FF3366',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });
