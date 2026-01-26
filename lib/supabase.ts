@@ -1,23 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
-import Constants from "expo-constants";
 
-// ...existing code...
-const expoExtra =
-  // new Expo SDKs use expoConfig
-  (Constants.expoConfig && Constants.expoConfig.extra) ||
-  // older SDKs use manifest
- // (Constants.manifest && (Constants.manifest as any).extra) ||
-  {};
+// Determine environment from env vars
+const isProduction = process.env.ENVIRONMENT === "production";
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || (expoExtra.SUPABASE_URL as string) || "";
-const SUPABASE_ANON_KEY =
-  process.env.SUPABASE_ANON_KEY || (expoExtra.SUPABASE_ANON_KEY as string) || "";
+// Load credentials based on environment
+const SUPABASE_URL = isProduction
+  ? process.env.SUPABASE_URL_PROD || ""
+  : process.env.SUPABASE_URL_DEV || "";
+
+const SUPABASE_ANON_KEY = isProduction
+  ? process.env.SUPABASE_ANON_KEY_PROD || ""
+  : process.env.SUPABASE_ANON_KEY_DEV || "";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error(
-    "Missing SUPABASE_URL or SUPABASE_ANON_KEY. Add them to app.json > expo.extra or set env."
+    `Missing Supabase credentials for ${isProduction ? "production" : "development"} environment. ` +
+    `Set SUPABASE_URL_${isProduction ? "PROD" : "DEV"} and SUPABASE_ANON_KEY_${isProduction ? "PROD" : "DEV"} environment variables.`
   );
 }
 

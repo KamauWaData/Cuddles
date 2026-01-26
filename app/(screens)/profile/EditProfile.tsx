@@ -95,6 +95,30 @@ export default function EditProfile() {
   setAvatar(urlData.publicUrl);
 };
 
+const deleteAvatar = async () => {
+  Alert.alert("Delete Avatar", "Are you sure you want to remove your avatar?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Delete",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          if (avatar && avatar.includes("/storage/v1/object/public/avatars/")) {
+            const urlParts = avatar.split("/storage/v1/object/public/avatars/")[1];
+            if (urlParts) {
+              await supabase.storage.from("avatars").remove([urlParts]);
+            }
+          }
+          setAvatar("");
+          Alert.alert("Success", "Avatar deleted successfully.");
+        } catch (err: any) {
+          Alert.alert("Error", err.message || "Failed to delete avatar.");
+        }
+      },
+    },
+  ]);
+};
+
   // --------------------------
   // Return location from SetLocation screen
   // --------------------------
@@ -149,7 +173,7 @@ export default function EditProfile() {
   return (
     <ScrollView className="flex-1 bg-gray-50 p-6">
       {/* Avatar */}
-      <TouchableOpacity onPress={pickImage} className="self-center mb-6">
+      <TouchableOpacity onPress={pickImage} className="self-center mb-2">
         <Image
           source={{ uri: avatar || "https://placehold.co/120x120?text=Avatar" }}
           style={{ width: 120, height: 120, borderRadius: 60 }}
@@ -158,6 +182,13 @@ export default function EditProfile() {
           Change Photo
         </Text>
       </TouchableOpacity>
+      {avatar && (
+        <TouchableOpacity onPress={deleteAvatar} className="self-center mb-6">
+          <Text className="text-center text-red-600 font-semibold text-sm">
+            Delete Avatar
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Card */}
       <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">

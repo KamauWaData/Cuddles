@@ -143,9 +143,19 @@ export default function RegisterScreen() {
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
                 By signing up, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text>
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => router.push('/(screens)/TermsOfService')}
+                >
+                  Terms of Service
+                </Text>
                 {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => router.push('/(screens)/PrivacyPolicy')}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
             </View>
 

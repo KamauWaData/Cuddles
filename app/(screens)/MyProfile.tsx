@@ -10,7 +10,7 @@ import Feather from "@expo/vector-icons/build/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { uploadToCloudinary } from "../../lib/cloudinary";
+import * as FileSystem from "expo-file-system";
 import { useGalleryPermission } from "../../components/usePermissions";
 
 // Set your storage bucket name (change if different)
@@ -354,10 +354,35 @@ export default function MyProfile() {
                     });
                     if (!result.canceled && result.assets && result.assets.length > 0) {
                       const uri = result.assets[0].uri;
-                      // Upload to Cloudinary
-                      const url = await uploadToCloudinary(uri);
+                      const fileExt = uri.split(".").pop() || "jpg";
+                      const filename = `gallery/${user?.id}/${Date.now()}.${fileExt}`;
+
+                      // Convert to base64 and upload to Supabase
+                      const base64 = await FileSystem.readAsStringAsync(uri, {
+                        encoding: "base64",
+                      });
+                      const binaryString = atob(base64);
+                      const len = binaryString.length;
+                      const bytes = new Uint8Array(len);
+                      for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                      }
+
+                      const { error: uploadError } = await supabase.storage
+                        .from("gallery")
+                        .upload(filename, bytes, {
+                          contentType: `image/${fileExt}`,
+                          upsert: false,
+                        });
+
+                      if (uploadError) throw uploadError;
+
+                      const { data: urlData } = supabase.storage
+                        .from("gallery")
+                        .getPublicUrl(filename);
+
                       // Update Supabase
-                      const newGallery = [...(profile.gallery || []), url];
+                      const newGallery = [...(profile.gallery || []), urlData.publicUrl];
                       const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
                       if (error) throw error;
                       setProfile({ ...profile, gallery: newGallery });
@@ -383,9 +408,27 @@ export default function MyProfile() {
                         { text: 'Cancel', style: 'cancel' },
                         {
                           text: 'Delete', style: 'destructive', onPress: async () => {
-                            const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
-                            const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
-                            if (!error) setProfile({ ...profile, gallery: newGallery });
+                            try {
+                              const imageUrl = profile.gallery?.[index];
+                              if (imageUrl) {
+                                // Extract the path from the public URL
+                                const urlParts = imageUrl.split('/storage/v1/object/public/gallery/')[1];
+                                if (urlParts) {
+                                  await supabase.storage.from('gallery').remove([urlParts]);
+                                }
+                              }
+
+                              const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
+                              const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                              if (!error) {
+                                setProfile({ ...profile, gallery: newGallery });
+                                Alert.alert('Success', 'Photo deleted successfully.');
+                              } else {
+                                Alert.alert('Error', 'Failed to delete photo from database.');
+                              }
+                            } catch (err: any) {
+                              Alert.alert('Error', err.message || 'Failed to delete photo.');
+                            }
                           }
                         }
                       ]);

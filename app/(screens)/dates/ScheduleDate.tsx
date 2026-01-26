@@ -126,8 +126,21 @@ export default function ScheduleDate() {
   };
 
   const removeImage = async () => {
-    setImageUrl("");
-    setLocalImageUri(null);
+    try {
+      if (imageUrl) {
+        // Extract the path from the public URL
+        const urlParts = imageUrl.split('/storage/v1/object/public/dates/')[1];
+        if (urlParts) {
+          await supabase.storage.from('dates').remove([urlParts]);
+        }
+      }
+      setImageUrl("");
+      setLocalImageUri(null);
+      Alert.alert("Removed", "Image removed successfully.");
+    } catch (err: any) {
+      console.error("delete error", err);
+      Alert.alert("Error", err.message || "Failed to remove image.");
+    }
   };
 
   const validate = () => {
