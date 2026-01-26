@@ -86,14 +86,25 @@ export default function RootLayout() {
     }
   }, [segments]);
 
-  if (checking) return <BrandedLoading message="Connecting..." />;
+  if (checking) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BrandedLoading message={authError ? "Error loading..." : "Connecting..."} />
+      </GestureHandlerRootView>
+    );
+  }
 
-  return( 
+  if (authError) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BrandedLoading message={authError} />
+      </GestureHandlerRootView>
+    );
+  }
+
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-  
       <Slot />
-
     </GestureHandlerRootView>
-
-);
+  );
 }
