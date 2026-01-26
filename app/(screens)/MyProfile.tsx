@@ -354,10 +354,35 @@ export default function MyProfile() {
                     });
                     if (!result.canceled && result.assets && result.assets.length > 0) {
                       const uri = result.assets[0].uri;
-                      // Upload to Cloudinary
-                      const url = await uploadToCloudinary(uri);
+                      const fileExt = uri.split(".").pop() || "jpg";
+                      const filename = `gallery/${user?.id}/${Date.now()}.${fileExt}`;
+
+                      // Convert to base64 and upload to Supabase
+                      const base64 = await FileSystem.readAsStringAsync(uri, {
+                        encoding: "base64",
+                      });
+                      const binaryString = atob(base64);
+                      const len = binaryString.length;
+                      const bytes = new Uint8Array(len);
+                      for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                      }
+
+                      const { error: uploadError } = await supabase.storage
+                        .from("gallery")
+                        .upload(filename, bytes, {
+                          contentType: `image/${fileExt}`,
+                          upsert: false,
+                        });
+
+                      if (uploadError) throw uploadError;
+
+                      const { data: urlData } = supabase.storage
+                        .from("gallery")
+                        .getPublicUrl(filename);
+
                       // Update Supabase
-                      const newGallery = [...(profile.gallery || []), url];
+                      const newGallery = [...(profile.gallery || []), urlData.publicUrl];
                       const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
                       if (error) throw error;
                       setProfile({ ...profile, gallery: newGallery });
