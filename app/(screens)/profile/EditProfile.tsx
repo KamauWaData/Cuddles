@@ -173,7 +173,7 @@ const deleteAvatar = async () => {
   return (
     <ScrollView className="flex-1 bg-gray-50 p-6">
       {/* Avatar */}
-      <TouchableOpacity onPress={pickImage} className="self-center mb-6">
+      <TouchableOpacity onPress={pickImage} className="self-center mb-2">
         <Image
           source={{ uri: avatar || "https://placehold.co/120x120?text=Avatar" }}
           style={{ width: 120, height: 120, borderRadius: 60 }}
@@ -182,6 +182,13 @@ const deleteAvatar = async () => {
           Change Photo
         </Text>
       </TouchableOpacity>
+      {avatar && (
+        <TouchableOpacity onPress={deleteAvatar} className="self-center mb-6">
+          <Text className="text-center text-red-600 font-semibold text-sm">
+            Delete Avatar
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Card */}
       <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
