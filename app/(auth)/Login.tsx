@@ -7,6 +7,7 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { useSession } from '../../lib/useSession';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatError } from '../../lib/errorHandler';
 
 export default function LoginScreen() {
   const router = useRouter();
