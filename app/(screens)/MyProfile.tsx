@@ -10,7 +10,7 @@ import Feather from "@expo/vector-icons/build/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { uploadToCloudinary } from "../../lib/cloudinary";
+import * as FileSystem from "expo-file-system";
 import { useGalleryPermission } from "../../components/usePermissions";
 
 // Set your storage bucket name (change if different)
