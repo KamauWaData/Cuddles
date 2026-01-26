@@ -95,6 +95,30 @@ export default function EditProfile() {
   setAvatar(urlData.publicUrl);
 };
 
+const deleteAvatar = async () => {
+  Alert.alert("Delete Avatar", "Are you sure you want to remove your avatar?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Delete",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          if (avatar && avatar.includes("/storage/v1/object/public/avatars/")) {
+            const urlParts = avatar.split("/storage/v1/object/public/avatars/")[1];
+            if (urlParts) {
+              await supabase.storage.from("avatars").remove([urlParts]);
+            }
+          }
+          setAvatar("");
+          Alert.alert("Success", "Avatar deleted successfully.");
+        } catch (err: any) {
+          Alert.alert("Error", err.message || "Failed to delete avatar.");
+        }
+      },
+    },
+  ]);
+};
+
   // --------------------------
   // Return location from SetLocation screen
   // --------------------------
