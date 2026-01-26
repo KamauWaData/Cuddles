@@ -408,9 +408,27 @@ export default function MyProfile() {
                         { text: 'Cancel', style: 'cancel' },
                         {
                           text: 'Delete', style: 'destructive', onPress: async () => {
-                            const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
-                            const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
-                            if (!error) setProfile({ ...profile, gallery: newGallery });
+                            try {
+                              const imageUrl = profile.gallery?.[index];
+                              if (imageUrl) {
+                                // Extract the path from the public URL
+                                const urlParts = imageUrl.split('/storage/v1/object/public/gallery/')[1];
+                                if (urlParts) {
+                                  await supabase.storage.from('gallery').remove([urlParts]);
+                                }
+                              }
+
+                              const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
+                              const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                              if (!error) {
+                                setProfile({ ...profile, gallery: newGallery });
+                                Alert.alert('Success', 'Photo deleted successfully.');
+                              } else {
+                                Alert.alert('Error', 'Failed to delete photo from database.');
+                              }
+                            } catch (err: any) {
+                              Alert.alert('Error', err.message || 'Failed to delete photo.');
+                            }
                           }
                         }
                       ]);
