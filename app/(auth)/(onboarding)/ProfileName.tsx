@@ -195,16 +195,16 @@ export default function ProfileName() {
       <View>
         <View className="flex-row justify-between items-center mb-8">
           <View className="w-8" />
-          <Text className="text-lg font-semibold text-gray-800">Step 1 of 3</Text>
+          <Text className="text-lg font-semibold text-gray-800">Step 1 of 4</Text>
           <SkipButton
             to="/(auth)/(onboarding)/Gender"
             onSkip={async () => {
               try {
-                await supabase.from("users").upsert({
+                await supabase.from("profiles").upsert({
                   id: uid,
                   name: null,
                   profile_complete: false,
-                  updatedAt: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
                 });
                 router.push("/(main)/home");
               } catch (err) {

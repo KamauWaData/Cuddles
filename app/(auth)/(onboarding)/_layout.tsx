@@ -5,6 +5,7 @@ export default function OnboardingLayout() {
     <Stack screenOptions={{ headerShown: false,}}>
       <Stack.Screen name="ProfileName" />
       <Stack.Screen name="Gender" />
+      <Stack.Screen name="Lifestyle" />
       <Stack.Screen name="Interests" />
     </Stack>
   );

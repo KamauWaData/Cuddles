@@ -16,20 +16,22 @@ import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../../lib/supabase";
 import { useGalleryPermission, useLocationPermission } from "../../../components/usePermissions";
+import { getUserAttributes, saveUserAttributes, UserAttributes } from "../../../lib/advancedFilters";
+import Slider from "@react-native-community/slider";
 
 export default function EditProfile() {
   const params = useLocalSearchParams();
   const router = useRouter();
 
-  const parsedUser = params.user ? JSON.parse(params.user as string) : {};
+  const parsedUser = params.data ? JSON.parse(params.data as string) : (params.user ? JSON.parse(params.user as string) : {});
 
   // --------------------------
   // STATE
   // --------------------------
-  const [firstName, setFirstName] = useState(parsedUser.firstName || "");
-  const [lastName, setLastName] = useState(parsedUser.lastName || "");
+  const [firstName, setFirstName] = useState(parsedUser.first_name || parsedUser.firstName || "");
+  const [lastName, setLastName] = useState(parsedUser.last_name || parsedUser.lastName || "");
   const [about, setAbout] = useState(parsedUser.about || "");
-  const [avatar, setAvatar] = useState(parsedUser.avatar || "");
+  const [avatar, setAvatar] = useState(parsedUser.avatar_url || parsedUser.avatar || "");
   const [gender, setGender] = useState(parsedUser.gender || "");
   const [birthdate, setBirthdate] = useState(
     parsedUser.birthday ? new Date(parsedUser.birthday) : new Date()
@@ -37,10 +39,38 @@ export default function EditProfile() {
   const [location, setLocation] = useState(parsedUser.location || "");
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
+  // Lifestyle attributes
+  const [height, setHeight] = useState(170);
+  const [smoking, setSmoking] = useState<UserAttributes["smoking"]>("not_specified");
+  const [drinking, setDrinking] = useState<UserAttributes["drinking"]>("not_specified");
+  const [education, setEducation] = useState<UserAttributes["education"]>("not_specified");
+  const [religion, setReligion] = useState<UserAttributes["religion"]>("not_specified");
+  const [relationshipType, setRelationshipType] = useState<UserAttributes["relationship_type"]>("not_specified");
+
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const requestGalleryPermission = useGalleryPermission();
   const requestLocationPermission = useLocationPermission();
+
+  // --------------------------
+  // FETCH ATTRIBUTES
+  // --------------------------
+  useEffect(() => {
+    const fetchAttrs = async () => {
+      if (parsedUser.id) {
+        const attrs = await getUserAttributes(parsedUser.id);
+        if (attrs) {
+          if (attrs.height_cm) setHeight(attrs.height_cm);
+          if (attrs.smoking) setSmoking(attrs.smoking);
+          if (attrs.drinking) setDrinking(attrs.drinking);
+          if (attrs.education) setEducation(attrs.education);
+          if (attrs.religion) setReligion(attrs.religion);
+          if (attrs.relationship_type) setRelationshipType(attrs.relationship_type);
+        }
+      }
+    };
+    fetchAttrs();
+  }, [parsedUser.id]);
 
   // --------------------------
   // PICK AVATAR → Upload to Supabase Storage
@@ -119,13 +149,13 @@ export default function EditProfile() {
 
     const profileData: any = {
       id: parsedUser.id,
-      firstName,
-      lastName,
-      avatar,
+      first_name: firstName,
+      last_name: lastName,
+      avatar_url: avatar,
       gender,
       about,
       birthday: birthdate.toISOString().split("T")[0],
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     if (coords) {
@@ -134,13 +164,23 @@ export default function EditProfile() {
       profileData.location = location;
     }
 
-    const { error } = await supabase.from("users").upsert(profileData);
+    const { error } = await supabase.from("profiles").upsert(profileData);
 
     if (error) {
       console.log(error);
       Alert.alert("Failed", "Profile update failed.");
       return;
     }
+
+    // Save lifestyle attributes
+    await saveUserAttributes({
+      height_cm: height,
+      smoking,
+      drinking,
+      education,
+      religion,
+      relationship_type: relationshipType,
+    });
 
     Alert.alert("Success", "Profile updated!");
     router.back();
@@ -218,6 +258,178 @@ export default function EditProfile() {
             }}
           />
         )}
+      </View>
+
+      {/* LIFESTYLE */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
+        <Text className="text-gray-800 font-bold text-lg mb-4">Lifestyle</Text>
+
+        {/* Height */}
+        <View className="mb-6">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-gray-700 font-medium">Height</Text>
+            <Text className="text-pink-600 font-bold">{height} cm</Text>
+          </View>
+          <Slider
+            style={{ width: "100%", height: 40 }}
+            minimumValue={140}
+            maximumValue={220}
+            step={1}
+            value={height}
+            onValueChange={setHeight}
+            minimumTrackTintColor="#FF69B4"
+            maximumTrackTintColor="#D1D5DB"
+            thumbTintColor="#FF1493"
+          />
+        </View>
+
+        {/* Smoking */}
+        <Text className="text-gray-700 font-medium mb-3">Smoking</Text>
+        <View className="flex-row gap-2 flex-wrap mb-6">
+          {[
+            { label: "Never", value: "never" },
+            { label: "Sometimes", value: "sometimes" },
+            { label: "Regularly", value: "regularly" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setSmoking(opt.value as any)}
+              className={`px-3 py-2 rounded-xl border ${
+                smoking === opt.value
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm ${
+                  smoking === opt.value ? "text-white font-bold" : "text-gray-600"
+                }`}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Drinking */}
+        <Text className="text-gray-700 font-medium mb-3">Drinking</Text>
+        <View className="flex-row gap-2 flex-wrap mb-4">
+          {[
+            { label: "Never", value: "never" },
+            { label: "Sometimes", value: "sometimes" },
+            { label: "Regularly", value: "regularly" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setDrinking(opt.value as any)}
+              className={`px-3 py-2 rounded-xl border ${
+                drinking === opt.value
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm ${
+                  drinking === opt.value ? "text-white font-bold" : "text-gray-600"
+                }`}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* ADVANCED INFO */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm mb-6">
+        <Text className="text-gray-800 font-bold text-lg mb-4">Advanced Details</Text>
+
+        {/* Education */}
+        <Text className="text-gray-700 font-medium mb-3">Education</Text>
+        <View className="flex-row gap-2 flex-wrap mb-6">
+          {[
+            { label: "High School", value: "high_school" },
+            { label: "Bachelors", value: "bachelors" },
+            { label: "Masters", value: "masters" },
+            { label: "PhD", value: "phd" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setEducation(opt.value as any)}
+              className={`px-3 py-2 rounded-xl border ${
+                education === opt.value
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm ${
+                  education === opt.value ? "text-white font-bold" : "text-gray-600"
+                }`}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Religion */}
+        <Text className="text-gray-700 font-medium mb-3">Religion</Text>
+        <View className="flex-row gap-2 flex-wrap mb-6">
+          {[
+            { label: "Christian", value: "christian" },
+            { label: "Muslim", value: "muslim" },
+            { label: "Jewish", value: "jewish" },
+            { label: "Hindu", value: "hindu" },
+            { label: "Buddhist", value: "buddhist" },
+            { label: "Atheist", value: "atheist" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setReligion(opt.value as any)}
+              className={`px-3 py-2 rounded-xl border ${
+                religion === opt.value
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm ${
+                  religion === opt.value ? "text-white font-bold" : "text-gray-600"
+                }`}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Relationship Type */}
+        <Text className="text-gray-700 font-medium mb-3">Looking for</Text>
+        <View className="flex-row gap-2 flex-wrap">
+          {[
+            { label: "Casual", value: "casual" },
+            { label: "Serious", value: "serious" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setRelationshipType(opt.value as any)}
+              className={`px-4 py-2 rounded-xl border ${
+                relationshipType === opt.value
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm ${
+                  relationshipType === opt.value ? "text-white font-bold" : "text-gray-600"
+                }`}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* ABOUT */}

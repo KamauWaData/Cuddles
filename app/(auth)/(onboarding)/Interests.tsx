@@ -14,6 +14,7 @@ import SkipButton from "../../../components/onboarding/SkipButton";
 import { useSession } from "../../../lib/useSession";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePermissions } from "../../../lib/usePermissions";
+import { saveUserAttributes } from "../../../lib/advancedFilters";
 
 const INTEREST_OPTIONS = [
   "Sports", "Music", "Travel", "Movies", "Books", "Fitness", "Cooking", "Art",
@@ -98,6 +99,16 @@ export default function Interests() {
         return;
       }
 
+      // Save additional lifestyle attributes
+      await saveUserAttributes({
+        height_cm: parsedProfile.height_cm,
+        smoking: parsedProfile.smoking,
+        drinking: parsedProfile.drinking,
+        education: parsedProfile.education,
+        religion: parsedProfile.religion,
+        relationship_type: parsedProfile.relationship_type,
+      });
+
       router.replace("/(main)/Home");
     } catch (err: any) {
       console.error("Profile save error:", err);
@@ -143,7 +154,7 @@ export default function Interests() {
             <Text className="text-pink-500 font-semibold">← Back</Text>
           </TouchableOpacity>
 
-          <Text className="text-lg font-semibold text-gray-800">Step 3 of 3</Text>
+          <Text className="text-lg font-semibold text-gray-800">Step 4 of 4</Text>
 
           <SkipButton to="/(main)/Home" onSkip={handleSkip} />
         </View>
