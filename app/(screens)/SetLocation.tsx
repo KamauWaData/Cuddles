@@ -22,126 +22,94 @@ interface LocationType {
 }
 
 export default function SetLocationScreen() {
-    const router = useRouter();
-    const params = useLocalSearchParams(); // 🚨 Get parameters passed from MapPickerScreen
-    
-    const [location, setLocation] = useState<LocationType | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [address, setAddress] = useState<string | null>(null);
+  const router = useRouter();
+  const {
+    location,
+    address,
+    loading,
+    error,
+    permissionGranted,
+    requestLocationPermission,
+    getCurrentLocation,
+    saveLocationToProfile,
+    setCustomLocation,
+  } = useLocation({ autoFetch: false, saveToProfile: false });
 
-    // 🚨 1. Watch for the returned location from the MapPickerScreen
-    useEffect(() => {
-        if (params.pickedLocation) {
-            try {
-                const pickedLoc = JSON.parse(params.pickedLocation as string) as LocationType;
-                setLocation(pickedLoc);
-                // After setting, remove the parameter so the effect doesn't re-run unexpectedly
-                router.setParams({ pickedLocation: undefined }); 
-                // Start reverse geocode
-                reverseGeocode(pickedLoc);
-            } catch (e) {
-                console.error("Failed to parse picked location:", e);
-            }
-        }
-    }, [params.pickedLocation]); // Only run when the pickedLocation parameter changes
+  const [customCity, setCustomCity] = useState<string>("");
+  const [customRegion, setCustomRegion] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lon: number } | null>(
+    null
+  );
+  const [searching, setSearching] = useState(false);
 
-    // 2. Initial Location/Permission Check (Modified to be more deliberate)
-    useEffect(() => {
-        const checkInitialLocation = async () => {
-            setLoading(true);
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status === "granted") {
-                    const currentPos = await Location.getCurrentPositionAsync({});
-                    const loc = { latitude: currentPos.coords.latitude, longitude: currentPos.coords.longitude };
-                    // Only set initial location if none has been picked yet
-                    if (!location) {
-                        setLocation(loc);
-                        reverseGeocode(loc);
-                    }
-                }
-            } catch (error) {
-                 console.error("Error getting initial location:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+  useEffect(() => {
+    if (location) {
+      setSelectedLocation({ lat: location.latitude, lon: location.longitude });
+    }
+  }, [location]);
 
-        if (!location) {
-            checkInitialLocation();
-        }
-    }, []); 
+  const handleUseCurrentLocation = async () => {
+    const granted = await requestLocationPermission();
+    if (!granted) {
+      Alert.alert("Permission Denied", "Location permission is required to use your current location.");
+      return;
+    }
 
-    // Open Map Picker
-    const openMapPicker = () => {
-        router.push("/MapPickerScreen");
-    };
+    const currentLocation = await getCurrentLocation();
+    if (currentLocation) {
+      setSelectedLocation({
+        lat: currentLocation.latitude,
+        lon: currentLocation.longitude,
+      });
+    }
+  };
 
-    // Reverse Geocode to get address string (No change needed here, but ensure API key is set)
-    const reverseGeocode = async (loc: LocationType) => {
-        if (!loc) return;
-        setAddress("Fetching address...");
-        try {
-            // Note: This still uses the Google API Key, as it's the most reliable reverse geocoding source.
-            // If you need a fully API-key-free solution, you would need to use a service like Nominatim (OSM's geocoder), 
-            // but it requires careful attribution and may be rate-limited.
-            const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-            if (!apiKey) {
-                 setAddress("Reverse geocoding not configured (Missing API key)");
-                 return;
-            }
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.latitude},${loc.longitude}&key=${apiKey}`;
-            const response = await fetch(url);
-            const json = await response.json();
-            if (json.status === "OK" && json.results.length > 0) {
-                setAddress(json.results[0].formatted_address);
-            } else {
-                setAddress("Address not found.");
-            }
-        } catch {
-            setAddress("Failed to get address.");
-        }
-    };
+  const handleSearchLocation = async () => {
+    if (!customCity.trim()) {
+      Alert.alert("Enter City", "Please enter a city name to search.");
+      return;
+    }
 
-    // Save location to Supabase example
-    // SetLocationScreen.js (within the saveLocation function)
+    setSearching(true);
+    try {
+      const query = customRegion.trim()
+        ? `${customCity}, ${customRegion}`
+        : customCity;
 
-// Save location to Supabase example
-  const saveLocation = async () => {
-      if (!location) {
-          Alert.alert("Action Required", "Please select a location first.");
-          return;
-      }
-      setLoading(true);
+      const results = await Location.geocodeAsync(query);
 
-      // 🚨 FIX: Await the promise returned by supabase.auth.getUser()
-      const { data, error: userError } = await supabase.auth.getUser();
-      const user = data.user;
-
-      if (userError || !user) {
-          Alert.alert("Authentication Error", "You must be logged in to save your profile.");
-          setLoading(false);
-          return;
-      }
-
-      // Use the retrieved user object
-      const { error: updateError } = await supabase
-          .from("profiles")
-          .update({
-              latitude: location.latitude,
-              longitude: location.longitude,
-              address, 
-          })
-          .eq("id", user.id); // Use user.id here
-
-      setLoading(false);
-
-      if (updateError) {
-          console.error("Supabase update error:", updateError);
-          Alert.alert("Error", "Failed to save location. Check console for details.");
+      if (results && results.length > 0) {
+        const firstResult = results[0];
+        setSelectedLocation({
+          lat: firstResult.latitude,
+          lon: firstResult.longitude,
+        });
+        Alert.alert("Location Found", `Setting location to ${query}`);
       } else {
-          Alert.alert("Success", "Location saved!");
+        Alert.alert("Not Found", `No location found for "${query}".`);
       }
+    } catch (err) {
+      console.error("Geocode error:", err);
+      Alert.alert("Search Error", "Failed to search for location.");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSaveLocation = async () => {
+    if (!selectedLocation) {
+      Alert.alert("No Location", "Please select or search for a location.");
+      return;
+    }
+
+    try {
+      await setCustomLocation(selectedLocation.lat, selectedLocation.lon);
+      Alert.alert("Success", "Location saved successfully!");
+      router.back();
+    } catch (err) {
+      console.error("Save location error:", err);
+      Alert.alert("Error", "Failed to save location.");
+    }
   };
 
   return (

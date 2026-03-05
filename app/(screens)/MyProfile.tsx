@@ -1,20 +1,30 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Dimensions,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { useSession } from "../../lib/useSession";
-import { supabase } from "../../lib/supabase";
+import { useSession } from "../lib/useSession";
+import { supabase } from "../lib/supabase";
 import React, { useEffect, useState } from "react";
-import BrandedLoading from "../../components/BrandedLoading";
-import Icon from "react-native-vector-icons/MaterialIcons";
+import BrandedLoading from "../components/BrandedLoading";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/build/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { useGalleryPermission } from "../../components/usePermissions";
 
-// Set your storage bucket name (change if different)
-const AVATAR_BUCKET = "avatars";
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CLOUDINARY_CLOUD_NAME = "dre7tjrrp";
+const CLOUDINARY_UPLOAD_PRESET = "my_avatar_preset";
 
 interface Profile {
   id: string;
@@ -22,7 +32,8 @@ interface Profile {
   last_name?: string | null;
   full_name?: string | null;
   name?: string | null;
-  avatar?: string | null;    // can be complete URL or storage object name
+  avatar?: string | null;
+  avatar_url?: string | null;
   gallery?: string[] | null;
   about?: string | null;
   interests?: string[] | null;
@@ -41,16 +52,36 @@ export default function MyProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImageForDelete, setSelectedImageForDelete] = useState<string | null>(null);
+  const [showGalleryOptions, setShowGalleryOptions] = useState(false);
+
+  const galleryPermission = usePermission("gallery", {
+    onDenied: () => {
+      Alert.alert(
+        "Permission Denied",
+        "Gallery permission is required to upload photos. Please enable it in Settings."
+      );
+    },
+  });
+
+  const cameraPermission = usePermission("camera", {
+    onDenied: () => {
+      Alert.alert(
+        "Permission Denied",
+        "Camera permission is required to take photos. Please enable it in Settings."
+      );
+    },
+  });
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace("/(auth)/login");
+      router.replace("/(auth)/Login");
       return;
     }
     if (user?.id) fetchProfile();
   }, [user?.id, loading]);
 
-  // Fetch profile row
   const fetchProfile = async () => {
     if (!user?.id) return;
 
@@ -70,42 +101,180 @@ export default function MyProfile() {
       setProfile(data);
       setFetchError(null);
 
-      // Resolve avatar URL after fetching profile
-      if (data?.avatar) resolveAvatarUrl(data.avatar);
-
+      if (data?.avatar_url || data?.avatar) {
+        resolveAvatarUrl(data.avatar_url || data.avatar);
+      }
     } catch (err: any) {
       setFetchError(err?.message ?? "Unknown error");
       setProfile(null);
     }
   };
 
-  // Turn a Supabase storage path into a public URL
   const resolveAvatarUrl = async (avatarValue: string) => {
     try {
-      // If avatar is already a full URL (Cloudinary, etc.)
       if (avatarValue.startsWith("http")) {
         setAvatarUrl(avatarValue);
         return;
       }
 
-      // Otherwise treat it as a storage object path: "avatars/USER-ID.jpg"
-      const { data } = supabase.storage
-        .from(AVATAR_BUCKET)
-        .getPublicUrl(avatarValue);
+      const { data } = supabase.storage.from("avatars").getPublicUrl(avatarValue);
 
       if (data?.publicUrl) {
         setAvatarUrl(data.publicUrl);
       } else {
         setAvatarUrl(null);
       }
-
     } catch (err) {
       console.error("resolveAvatarUrl error:", err);
       setAvatarUrl(null);
     }
   };
 
-  if (loading)
+  const uploadToCloudinary = async (fileUri: string): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+
+      const fileName = `gallery_${Date.now()}.jpg`;
+      formData.append("file", {
+        uri: fileUri,
+        type: "image/jpeg",
+        name: fileName,
+      } as any);
+
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      return data.secure_url;
+    } catch (error: any) {
+      console.error("Cloudinary upload error:", error);
+      Alert.alert("Upload Error", error.message || "Failed to upload image to Cloudinary");
+      return null;
+    }
+  };
+
+  const handleAddPhoto = async (source: "camera" | "gallery") => {
+    setShowGalleryOptions(false);
+
+    try {
+      let result;
+
+      if (source === "camera") {
+        const granted = await cameraPermission.request();
+        if (!granted) return;
+
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } else {
+        const granted = await galleryPermission.request();
+        if (!granted) return;
+
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      }
+
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      const file = result.assets[0];
+
+      setUploading(true);
+
+      const cloudinaryUrl = await uploadToCloudinary(file.uri);
+
+      if (!cloudinaryUrl) {
+        setUploading(false);
+        return;
+      }
+
+      const currentGallery = profile?.gallery || [];
+      const updatedGallery = [...currentGallery, cloudinaryUrl];
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ gallery: updatedGallery })
+        .eq("id", user?.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile((prev) => (prev ? { ...prev, gallery: updatedGallery } : null));
+      Alert.alert("Success", "Photo added to your gallery!");
+    } catch (error: any) {
+      console.error("Add photo error:", error);
+      Alert.alert("Error", error.message || "Failed to add photo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoUrl: string) => {
+    Alert.alert("Delete Photo", "Are you sure you want to delete this photo?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setUploading(true);
+            const updatedGallery = (profile?.gallery || []).filter((url) => url !== photoUrl);
+
+            const { error } = await supabase
+              .from("profiles")
+              .update({ gallery: updatedGallery })
+              .eq("id", user?.id);
+
+            if (error) {
+              throw error;
+            }
+
+            setProfile((prev) => (prev ? { ...prev, gallery: updatedGallery } : null));
+            setSelectedImageForDelete(null);
+            Alert.alert("Success", "Photo deleted from your gallery!");
+          } catch (error: any) {
+            console.error("Delete photo error:", error);
+            Alert.alert("Error", error.message || "Failed to delete photo");
+          } finally {
+            setUploading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const computeAge = (b?: string | null) => {
+    if (!b) return null;
+    const bd = new Date(b);
+    const now = new Date();
+    let age = now.getFullYear() - bd.getFullYear();
+    const m = now.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < bd.getDate())) age--;
+    return age;
+  };
+
+  if (loading) {
     return (
       <LinearGradient colors={["#FFF0F5", "#FFFFFF"]} style={styles.container}>
         <View style={styles.centerContent}>
@@ -113,6 +282,7 @@ export default function MyProfile() {
         </View>
       </LinearGradient>
     );
+  }
 
   if (!profile) {
     return (
@@ -151,13 +321,12 @@ export default function MyProfile() {
     );
   }
 
-  // Utility: compute display name + age
   const displayName =
     profile.name ??
     profile.full_name ??
-    `${profile.first_name ?? ""}${
-      profile.first_name && profile.last_name ? " " : ""
-    }${profile.last_name ?? ""}`.trim() ??
+    `${profile.first_name ?? ""}${profile.first_name && profile.last_name ? " " : ""}${
+      profile.last_name ?? ""
+    }`.trim() ??
     "Your Name";
 
   // Navigation buttons for verification, safety, and profile improvements
@@ -221,6 +390,7 @@ export default function MyProfile() {
           <Text style={styles.headerTitle}>My Profile</Text>
           <View style={styles.headerSpacer} />
         </View>
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -247,12 +417,11 @@ export default function MyProfile() {
                 activeOpacity={0.8}
               >
                 <View style={styles.editAvatarIcon}>
-                  <Ionicons name="pencil" size={16} color="#FFFFFF" />
+                  <Ionicons name="camera" size={16} color="#FFFFFF" />
                 </View>
               </TouchableOpacity>
             </View>
 
-            {/* Name and Basic Info */}
             <Text style={styles.profileName}>
               {displayName}
               {age ? `, ${age}` : ""}
@@ -267,7 +436,6 @@ export default function MyProfile() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsRow}>
-            {/* Action Buttons 
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() =>
@@ -287,11 +455,11 @@ export default function MyProfile() {
                 <Ionicons name="create-outline" size={20} color="#FFFFFF" />
                 <Text style={styles.actionButtonText}>Edit</Text>
               </LinearGradient>
-            </TouchableOpacity>*/}
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push("/(screens)/settings")}
+              onPress={() => router.push("/(screens)/Settings")}
               activeOpacity={0.8}
             >
               <View style={styles.settingsButton}>
@@ -333,14 +501,15 @@ export default function MyProfile() {
 
           {/* Gallery Section */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="image-outline" size={20} color="#FF3366" />
-              <Text style={styles.sectionTitle}>Gallery</Text>
-            </View>
-            <View style={styles.galleryGrid}>
-              {/* Add Photo Tile */}
+            <View style={styles.galleryHeaderContainer}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="image-outline" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>Gallery</Text>
+              </View>
               <TouchableOpacity
-                style={[styles.galleryItem, styles.addPhotoTile]}
+                style={styles.addPhotoButton}
+                onPress={() => setShowGalleryOptions(true)}
+                disabled={uploading}
                 activeOpacity={0.8}
                 onPress={async () => {
                   try {
@@ -392,10 +561,7 @@ export default function MyProfile() {
                   }
                 }}
               >
-                <View style={styles.addPhotoContent}>
-                  <Ionicons name="add" size={32} color="#FF3366" />
-                  <Text style={{ color: '#FF3366', fontWeight: '600', marginTop: 4 }}>Add Photo</Text>
-                </View>
+                <Ionicons name="add-circle" size={24} color="#FF3366" />
               </TouchableOpacity>
               {/* Gallery Images */}
               {(profile.gallery || []).map((pic, index) => (
@@ -440,6 +606,52 @@ export default function MyProfile() {
                 </View>
               ))}
             </View>
+
+            {profile.gallery && profile.gallery.length > 0 ? (
+              <View style={styles.galleryGrid}>
+                {profile.gallery.map((photo, index) => (
+                  <View key={index} style={styles.galleryItemWrapper}>
+                    <TouchableOpacity
+                      style={styles.galleryItem}
+                      onPress={() => setSelectedImageForDelete(photo)}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={{ uri: photo }} style={styles.galleryImage} />
+                      {selectedImageForDelete === photo && (
+                        <View style={styles.galleryOverlay}>
+                          <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+
+                    {selectedImageForDelete === photo && (
+                      <TouchableOpacity
+                        style={styles.deletePhotoButton}
+                        onPress={() => handleDeletePhoto(photo)}
+                        disabled={uploading}
+                      >
+                        <Ionicons name="trash" size={18} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyGallery}>
+                <Ionicons name="images-outline" size={40} color="#D1D5DB" />
+                <Text style={styles.emptyGalleryText}>No photos yet</Text>
+                <Text style={styles.emptyGallerySubtext}>
+                  Add photos to make your profile more attractive
+                </Text>
+              </View>
+            )}
+
+            {uploading && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#FF3366" size="large" />
+                <Text style={styles.uploadingText}>Uploading photo...</Text>
+              </View>
+            )}
           </View>
 
           {/* Logout Section */}
@@ -455,9 +667,64 @@ export default function MyProfile() {
               <Text style={styles.logoutButtonText}>Log Out</Text>
             </TouchableOpacity>
           </View>
-
-          <NavigationButtons />
         </ScrollView>
+
+        {/* Gallery Options Modal */}
+        <Modal
+          visible={showGalleryOptions}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowGalleryOptions(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Photo</Text>
+                <TouchableOpacity
+                  onPress={() => setShowGalleryOptions(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#1F2937" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleAddPhoto("camera")}
+                disabled={uploading}
+              >
+                <View style={styles.modalButtonIcon}>
+                  <Ionicons name="camera" size={24} color="#FF3366" />
+                </View>
+                <View style={styles.modalButtonText}>
+                  <Text style={styles.modalButtonTitle}>Take Photo</Text>
+                  <Text style={styles.modalButtonSubtext}>Use your camera</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => handleAddPhoto("gallery")}
+                disabled={uploading}
+              >
+                <View style={styles.modalButtonIcon}>
+                  <Ionicons name="images" size={24} color="#FF3366" />
+                </View>
+                <View style={styles.modalButtonText}>
+                  <Text style={styles.modalButtonTitle}>Choose from Gallery</Text>
+                  <Text style={styles.modalButtonSubtext}>Select from your photos</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowGalleryOptions(false)}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -675,10 +942,19 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 14,
   },
+  galleryHeaderContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
+  },
+  addPhotoButton: {
+    padding: 4,
   },
   sectionCard: {
     backgroundColor: "#FFFFFF",
@@ -723,8 +999,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
   },
+  galleryItemWrapper: {
+    position: "relative",
+  },
   galleryItem: {
-    width: "31%",
+    width: (SCREEN_WIDTH - 48) / 3,
     aspectRatio: 0.9,
     borderRadius: 12,
     overflow: "hidden",
@@ -733,10 +1012,75 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
+    backgroundColor: "#F9FAFB",
   },
   galleryImage: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
+  },
+  galleryOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deletePhotoButton: {
+    position: "absolute",
+    bottom: -12,
+    right: -12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  emptyGallery: {
+    alignItems: "center",
+    paddingVertical: 40,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderStyle: "dashed",
+  },
+  emptyGalleryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginTop: 12,
+  },
+  emptyGallerySubtext: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginTop: 4,
+  },
+  uploadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  uploadingText: {
+    marginTop: 12,
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
   },
   logoutButton: {
     paddingVertical: 14,
@@ -752,26 +1096,73 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
-  addPhotoTile: {
-    backgroundColor: '#FFF0F5',
-    borderWidth: 1,
-    borderColor: '#FFB6C1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
-  addPhotoContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  modalButtonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#FFF0F5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalButtonText: {
     flex: 1,
   },
-  deleteIcon: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    zIndex: 2,
-    backgroundColor: 'white',
-    borderRadius: 14,
+  modalButtonTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 2,
+  },
+  modalButtonSubtext: {
+    fontSize: 13,
+    color: "#9CA3AF",
+  },
+  modalCancelButton: {
+    paddingVertical: 14,
+    marginTop: 8,
+    borderRadius: 10,
+    backgroundColor: "#F9FAFB",
+    alignItems: "center",
+  },
+  modalCancelButtonText: {
+    color: "#6B7280",
+    fontWeight: "700",
+    fontSize: 16,
   },
   navButton: {
     flexDirection: 'row',

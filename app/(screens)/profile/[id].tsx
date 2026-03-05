@@ -182,6 +182,64 @@ export default function UserProfileScreen() {
                 )}
               </View>
             </View>
+          )}
+
+          {/* Location Info */}
+          {profile.location && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="location" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>Location</Text>
+              </View>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionText}>{profile.location}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Additional Photos */}
+          {profile.gallery && profile.gallery.length > 0 && images.length > 1 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="images-outline" size={20} color="#FF3366" />
+                <Text style={styles.sectionTitle}>More Photos</Text>
+              </View>
+              <View style={styles.galleryGrid}>
+                {profile.gallery.map((photo, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.galleryGridItem}
+                    onPress={() => setCurrentImageIndex(images.indexOf(photo))}
+                    activeOpacity={0.8}
+                  >
+                    <Image source={{ uri: photo }} style={styles.galleryGridImage} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Action Buttons at Bottom */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleBlock}
+              activeOpacity={0.8}
+            >
+              <View style={styles.blockButton}>
+                <Ionicons name="close" size={24} color="#EF4444" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleReport}
+              activeOpacity={0.8}
+            >
+              <View style={styles.reportButton}>
+                <Ionicons name="flag" size={24} color="#F59E0B" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* About Section */}

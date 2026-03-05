@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["http://localhost:8081", "https://cuddles-59853.firebaseapp.com", "https://cuddles-59853.web.app"],
+    "origin": ["http://localhost:8081", "https://cuddles-59853.firebaseapp.com", "https://cuddles-59853.web.app", "https://c1bdce5e37ab484a83925d10043855ad-c3bbf901ff914e4b9baceb812.fly.dev"],
     "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
     "maxAgeSeconds": 3600
   }

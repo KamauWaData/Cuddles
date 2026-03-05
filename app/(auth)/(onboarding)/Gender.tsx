@@ -30,7 +30,7 @@ export default function Gender() {
     }
 
     router.push({
-      pathname: "/(auth)/(onboarding)/Interests",
+      pathname: "/(auth)/(onboarding)/Lifestyle",
       params: {
         uid,
         profile: JSON.stringify({
@@ -53,16 +53,16 @@ export default function Gender() {
             <Text className="text-pink-500 font-semibold">← Back</Text>
           </TouchableOpacity>
 
-          <Text className="text-lg font-semibold text-gray-800">Step 2 of 3</Text>
+          <Text className="text-lg font-semibold text-gray-800">Step 2 of 4</Text>
 
           <SkipButton
-            to="/(auth)/(onboarding)/Interests"
+            to="/(auth)/(onboarding)/Lifestyle"
             onSkip={async () => {
-              await supabase.from("users").upsert({
+              await supabase.from("profiles").upsert({
                 id: uid,
                 name: null,
                 profile_complete: false,
-                updatedAt: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
               });
             }}
           />
