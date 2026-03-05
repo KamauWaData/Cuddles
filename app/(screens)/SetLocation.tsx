@@ -1,22 +1,25 @@
-import React, { useEffect, useState } from "react";
+// /app/SetLocationScreen.js (Modified)
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
   Alert,
-  ScrollView,
-  TextInput,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
-import { supabase } from "../lib/supabase";
-import { useLocation } from "../lib/useLocation";
-import MapView, { Marker } from "react-native-maps";
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
+import * as Location from 'expo-location';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import StaticMapPreview from '../../components/StaticMapPreview';
+import { supabase } from '../../lib/supabase';
+
+interface LocationType {
+    latitude: number;
+    longitude: number;
+}
 
 export default function SetLocationScreen() {
   const router = useRouter();
@@ -110,167 +113,102 @@ export default function SetLocationScreen() {
   };
 
   return (
-    <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+    <LinearGradient colors={['#FFF0F5', '#FFFFFF', '#FFF5F7']} style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={28} color="#FF3366" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Set Location</Text>
-          <View style={styles.headerSpacer} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Set Location</Text>
+            <Text style={styles.headerSubtitle}>Pin your location on the map</Text>
+          </View>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Current Location Info */}
-          {address && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="location" size={20} color="#FF3366" />
-                <Text style={styles.sectionTitle}>Current Location</Text>
-              </View>
-              <View style={styles.locationCard}>
-                <Text style={styles.locationCardText}>
-                  {address.city && address.region
-                    ? `${address.city}, ${address.region}`
-                    : address.name ?? "Location Details"}
-                </Text>
-                {address.country && (
-                  <Text style={styles.locationCardSubtext}>{address.country}</Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Use Current Location Button */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.currentLocationButton}
-              onPress={handleUseCurrentLocation}
-              activeOpacity={0.8}
-              disabled={loading}
-            >
-              <LinearGradient
-                colors={["#ff69b4", "#ff1493"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.buttonGradient}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="locate" size={20} color="#FFFFFF" />
-                    <Text style={styles.buttonText}>Use Current Location</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* Or Divider */}
-          <View style={styles.orContainer}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          {/* Search Location */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="search" size={20} color="#FF3366" />
-              <Text style={styles.sectionTitle}>Search Location</Text>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>City</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., New York"
-                value={customCity}
-                onChangeText={setCustomCity}
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>State/Region (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., New York"
-                value={customRegion}
-                onChangeText={setCustomRegion}
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={handleSearchLocation}
-              activeOpacity={0.8}
-              disabled={searching}
-            >
-              {searching ? (
-                <ActivityIndicator color="#FF3366" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="search" size={18} color="#FF3366" />
-                  <Text style={styles.searchButtonText}>Search Location</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Selected Location Display */}
-          {selectedLocation && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                <Text style={styles.sectionTitle}>Selected Location</Text>
-              </View>
-              <View style={styles.selectedLocationCard}>
-                <Text style={styles.selectedLocationText}>
-                  {selectedLocation.lat.toFixed(4)}, {selectedLocation.lon.toFixed(4)}
-                </Text>
-                <Text style={styles.selectedLocationSubtext}>
-                  Latitude: {selectedLocation.lat.toFixed(6)}
-                </Text>
-                <Text style={styles.selectedLocationSubtext}>
-                  Longitude: {selectedLocation.lon.toFixed(6)}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Error Display */}
-          {error && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#EF4444" />
-              <Text style={styles.errorText}>{error.message}</Text>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Footer: Save Button */}
-        <View style={styles.footerContainer}>
+        {/* Map Section */}
+        <View style={styles.mapSection}>
           <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSaveLocation}
+            onPress={openMapPicker}
+            activeOpacity={0.9}
+            style={styles.mapContainer}
+          >
+            {loading ? (
+              <View style={styles.mapPlaceholder}>
+                <ActivityIndicator size="large" color="#FF3366" />
+                <Text style={styles.placeholderText}>Getting GPS location...</Text>
+              </View>
+            ) : location ? (
+              <StaticMapPreview lat={location.latitude} lng={location.longitude} />
+            ) : (
+              <View style={styles.mapPlaceholder}>
+                <Ionicons name="map-outline" size={48} color="#FFB4C1" />
+                <Text style={styles.placeholderText}>Tap to select location</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Info Card */}
+        {location && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoLabel}>Coordinates</Text>
+                <Text style={styles.infoValue}>
+                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                </Text>
+              </View>
+            </View>
+
+            {address && (
+              <View style={[styles.infoRow, { marginTop: 12 }]}>
+                <Ionicons name="location" size={20} color="#FF3366" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue}>{address}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            onPress={openMapPicker}
+            style={[styles.secondaryButton, loading && { opacity: 0.6 }]}
+            disabled={loading}
             activeOpacity={0.85}
-            disabled={!selectedLocation || loading}
+          >
+            <Ionicons name="map" size={18} color="#FF3366" />
+            <Text style={styles.secondaryButtonText}>Change Location</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={saveLocation}
+            disabled={loading || !location}
+            style={[
+              styles.primaryButton,
+              (loading || !location) && { opacity: 0.6 },
+            ]}
+            activeOpacity={0.85}
           >
             <LinearGradient
-              colors={["#ff69b4", "#ff1493"]}
+              colors={['#FF3366', '#FF6B8A']}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.saveButtonGradient}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
             >
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-              <Text style={styles.saveButtonText}>Save Location</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.primaryButtonText}>Save Location</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -287,212 +225,129 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    gap: 12,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
     fontSize: 22,
-    fontWeight: "700",
-    color: "#1F2937",
+    fontWeight: '700',
+    color: '#1F2937',
   },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 100,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  locationCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF3366",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  locationCardText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 4,
-  },
-  locationCardSubtext: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  currentLocationButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#FF3366",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  buttonGradient: {
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  orContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 16,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E5E7EB",
-  },
-  orText: {
-    marginHorizontal: 12,
-    color: "#9CA3AF",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: "#1F2937",
-  },
-  searchButton: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#FFE4E6",
-    backgroundColor: "#FFF0F5",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  searchButtonText: {
-    color: "#FF3366",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  selectedLocationCard: {
-    backgroundColor: "#F0FDF4",
-    borderRadius: 14,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#10B981",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  selectedLocationText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#065F46",
-    marginBottom: 8,
-  },
-  selectedLocationSubtext: {
+  headerSubtitle: {
     fontSize: 13,
-    color: "#059669",
+    color: '#9CA3AF',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  mapSection: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  mapContainer: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  placeholderText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  infoCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
-  errorContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FEF2F2",
-    borderRadius: 10,
-    padding: 14,
-    gap: 10,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#EF4444",
-  },
-  errorText: {
-    flex: 1,
-    color: "#DC2626",
-    fontWeight: "500",
+  infoValue: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    lineHeight: 20,
   },
-  footerContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
   },
-  saveButton: {
+  primaryButton: {
+    flex: 1,
     borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#FF3366",
+    overflow: 'hidden',
+    shadowColor: '#FF3366',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  saveButtonGradient: {
-    flexDirection: "row",
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
+  primaryButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     gap: 8,
   },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 17,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#FFE4E6',
+  },
+  secondaryButtonText: {
+    color: '#FF3366',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

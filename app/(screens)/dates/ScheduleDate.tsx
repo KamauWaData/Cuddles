@@ -126,8 +126,21 @@ export default function ScheduleDate() {
   };
 
   const removeImage = async () => {
-    setImageUrl("");
-    setLocalImageUri(null);
+    try {
+      if (imageUrl) {
+        // Extract the path from the public URL
+        const urlParts = imageUrl.split('/storage/v1/object/public/dates/')[1];
+        if (urlParts) {
+          await supabase.storage.from('dates').remove([urlParts]);
+        }
+      }
+      setImageUrl("");
+      setLocalImageUri(null);
+      Alert.alert("Removed", "Image removed successfully.");
+    } catch (err: any) {
+      console.error("delete error", err);
+      Alert.alert("Error", err.message || "Failed to remove image.");
+    }
   };
 
   const validate = () => {
@@ -458,11 +471,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#E5E7EB",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
     color: "#1F2937",
     backgroundColor: "#F9FAFB",

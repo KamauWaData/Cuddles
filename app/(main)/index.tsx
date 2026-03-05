@@ -11,7 +11,6 @@ import Icon from "@expo/vector-icons/Ionicons";
 import BrandedLoading from "../../components/BrandedLoading";
 import { LinearGradient } from "expo-linear-gradient";
 
-
 export default function Home() {
     console.log('[HomeScreen] Mounted');
       const router = useRouter();

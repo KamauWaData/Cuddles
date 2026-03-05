@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -10,251 +10,200 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  Alert,
-} from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { supabase } from "../../../lib/supabase";
-import {
-  sendMessage,
-  sendImageMessage,
-  markConversationAsRead,
-  subscribeToTypingIndicators,
-  subscribeToReadReceipts,
-  setTypingIndicator,
-  removeTypingIndicator,
-  ChatMessage,
-} from "../../../lib/chatEnhancements";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { supabase } from '../../../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  image_url?: string;
+  read_at?: string;
+  created_at: string;
+}
 
 export default function ChatScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [recipient, setRecipient] = useState<any>(null);
-  const [text, setText] = useState("");
-  const [myId, setMyId] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [otherUserName, setOtherUserName] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const flatRef = useRef<FlatList>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (auth?.user) {
-        setMyId(auth.user.id);
-        fetchRecipient(auth.user.id);
+    const initChat = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      setCurrentUserId(userId || null);
+
+      if (!conversationId || !userId) {
+        setLoading(false);
+        return;
       }
+
+      await fetchMessagesAndSetup(conversationId, userId);
     };
-    init();
-    fetchMessages();
 
-    // Mark as read on entry
-    markConversationAsRead(conversationId);
+    initChat();
+  }, [conversationId]);
 
-    // Subscribe to new messages
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as ChatMessage;
+  const fetchMessagesAndSetup = async (convId: string, userId: string) => {
+    try {
+      // Fetch messages
+      const { data: msgData, error: msgError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true });
 
-          if (newMessage.message_type === "image") {
-            // Fetch attachment for image messages
-            supabase
-              .from("message_attachments")
-              .select("*")
-              .eq("message_id", newMessage.id)
-              .single()
-              .then(({ data: attachment }) => {
-                const messageWithAttachment = { ...newMessage, message_attachments: attachment ? [attachment] : [] };
-                setMessages((p) => {
-                  if (p.some((m) => m.id === newMessage.id)) {
-                    return p.map((m) => m.id === newMessage.id ? messageWithAttachment : m);
-                  }
-                  return [...p, messageWithAttachment];
-                });
-              });
-          } else {
-            setMessages((p) => {
-              if (p.some((m) => m.id === newMessage.id)) return p;
-              return [...p, newMessage];
-            });
-          }
+      if (!msgError && msgData) {
+        setMessages(msgData as Message[]);
+        flatRef.current?.scrollToEnd({ animated: true });
 
-          // Mark as read if it's from the other person
-          if (newMessage.sender_id !== myId) {
-            markConversationAsRead(conversationId);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const updatedMessage = payload.new as ChatMessage;
-          setMessages((p) =>
-            p.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
-          );
-        }
-      )
-      .subscribe();
-
-    // Subscribe to typing
-    const unsubscribeTyping = subscribeToTypingIndicators(conversationId, (users) => {
-      setTypingUsers(users.filter((id) => id !== myId));
-    });
-
-    // Subscribe to read receipts
-    const unsubscribeRead = subscribeToReadReceipts(conversationId, (messageId, userId) => {
-      if (userId !== myId) {
-        setMessages((p) =>
-          p.map((m) => (m.id === messageId ? { ...m, delivery_status: "read", is_read: true } : m))
-        );
+        // Mark as read
+        await supabase
+          .from('messages')
+          .update({ read_at: new Date().toISOString() })
+          .eq('conversation_id', convId)
+          .neq('sender_id', userId);
       }
-    });
 
-    return () => {
-      supabase.removeChannel(channel);
-      unsubscribeTyping();
-      unsubscribeRead();
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    };
-  }, [conversationId, myId]);
+      // Fetch other user's name for header
+      const { data: convData } = await supabase
+        .from('conversations')
+        .select('match:matches(user_a, user_b)')
+        .eq('id', convId)
+        .single();
 
-  const fetchMessages = async () => {
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*, message_attachments(*)")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+      if (convData?.match) {
+        const matchData = Array.isArray(convData.match) ? convData.match[0] : convData.match;
+        const otherUserId =
+          matchData.user_a === userId
+            ? matchData.user_b
+            : matchData.user_a;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', otherUserId)
+          .single();
+        setOtherUserName(profile?.first_name || 'User');
+      }
 
-    if (!error && data) {
-      setMessages(data);
+      // Subscribe to new messages
+      const channel = supabase
+        .channel(`messages:${convId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${convId}`,
+          },
+          (payload) => {
+            const newMsg = payload.new as Message;
+            setMessages((prev) => [...prev, newMsg]);
+            if (newMsg.sender_id !== userId) {
+              setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => supabase.removeChannel(channel);
+    } catch (error) {
+      console.error('Error fetching chat:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchRecipient = async (currentUserId: string) => {
-    // Get conversation to find the other participant
-    const { data: conv, error: convError } = await supabase
-      .from("conversations")
-      .select("participant1_id, participant2_id")
-      .eq("id", conversationId)
-      .single();
+  const sendMessage = async () => {
+    if (!text.trim() || !currentUserId || !conversationId) return;
 
-    if (convError || !conv) return;
-
-    const otherId = conv.participant1_id === currentUserId ? conv.participant2_id : conv.participant1_id;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", otherId)
-      .single();
-
-    if (profile) {
-      setRecipient(profile);
-    }
-  };
-
-  const handleSend = async () => {
-    if (!text.trim() || sending) return;
+    const messageText = text.trim();
     setSending(true);
-    const msg = text.trim();
-    setText("");
-    removeTypingIndicator(conversationId);
-    setIsTyping(false);
+    setText('');
 
-    const result = await sendMessage(conversationId, msg);
-    if (!result) {
-      Alert.alert("Error", "Failed to send message");
-    }
-    setSending(false);
-  };
+    try {
+      const { error } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: currentUserId,
+        content: messageText,
+        created_at: new Date().toISOString(),
+      });
 
-  const handleImagePick = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow gallery access to send photos.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.7,
-    });
-
-    if (!result.canceled && result.assets?.[0]) {
-      setSending(true);
-      const res = await sendImageMessage(conversationId, result.assets[0].uri);
-      if (!res) {
-        Alert.alert("Error", "Failed to send image");
+      if (error) {
+        console.error('Send error:', error);
+        setText(messageText); // Restore text on error
+      } else {
+        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
       }
+    } catch (err) {
+      console.error('Send message error:', err);
+      setText(messageText);
+    } finally {
       setSending(false);
     }
   };
 
-  const handleTyping = (val: string) => {
-    setText(val);
-    if (!isTyping) {
-      setIsTyping(true);
-      setTypingIndicator(conversationId);
+  const handleTextChange = (txt: string) => {
+    setText(txt);
+    setIsTyping(true);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
 
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      removeTypingIndicator(conversationId);
-    }, 3000);
+    }, 1000);
   };
 
-  const renderMessage = ({ item }: { item: any }) => {
-    const isMe = item.sender_id === myId;
-    const attachment = item.message_attachments?.[0];
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isOwn = item.sender_id === currentUserId;
+    const showTime = new Date(item.created_at).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     return (
-      <View style={[styles.messageWrapper, isMe ? styles.myMessageWrapper : styles.theirMessageWrapper]}>
-        <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
-          {item.message_type === "image" ? (
-            attachment ? (
-              <Image source={{ uri: attachment.attachment_url }} style={styles.messageImage} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <ActivityIndicator size="small" color={isMe ? "#fff" : "#FF3366"} />
-              </View>
-            )
-          ) : (
-            <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
-              {item.message}
-            </Text>
-          )}
+      <View style={[styles.messageRow, isOwn && styles.ownMessageRow]}>
+        <View
+          style={[
+            styles.messageBubble,
+            isOwn ? styles.ownBubble : styles.otherBubble,
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              isOwn && styles.ownMessageText,
+            ]}
+          >
+            {item.content}
+          </Text>
           <View style={styles.messageFooter}>
-            <Text style={[styles.messageTime, isMe ? styles.myTime : styles.theirTime]}>
-              {new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <Text
+              style={[
+                styles.messageTime,
+                isOwn && styles.ownMessageTime,
+              ]}
+            >
+              {showTime}
             </Text>
-            {isMe && (
-              <Ionicons
-                name={item.delivery_status === "read" ? "checkmark-done" : "checkmark"}
-                size={14}
-                color={item.delivery_status === "read" ? "#fff" : "#eee"}
-                style={{ marginLeft: 4 }}
-              />
+            {isOwn && item.read_at && (
+              <Ionicons name="checkmark-done" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
             )}
           </View>
         </View>
@@ -262,220 +211,272 @@ export default function ChatScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <LinearGradient colors={['#FFF0F5', '#FFFFFF']} style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#FF3366" />
+        </View>
+      </LinearGradient>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <LinearGradient colors={["#FF3366", "#FF5E8E"]} style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Image
-            source={{ uri: recipient?.avatar_url || recipient?.avatar || "https://placehold.co/100x100?text=User" }}
-            style={styles.avatar}
-          />
-          <View>
-            <Text style={styles.recipientName}>{recipient?.first_name || "Chat"}</Text>
-            {typingUsers.length > 0 && <Text style={styles.typingIndicator}>typing...</Text>}
+    <LinearGradient colors={['#FFF0F5', '#FFFFFF', '#FFF5F7']} style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={28} color="#FF3366" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{otherUserName}</Text>
+          </View>
+          <View style={styles.headerIconContainer}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <Ionicons name="call-outline" size={22} color="#FF3366" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIcon}>
+              <Ionicons name="videocam-outline" size={22} color="#FF3366" />
+            </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
-        </TouchableOpacity>
-      </LinearGradient>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
+        {/* Messages List */}
         <FlatList
           ref={flatRef}
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={renderMessage}
-          contentContainerStyle={styles.listContent}
-          onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatRef.current?.scrollToEnd({ animated: true })}
+          contentContainerStyle={styles.messagesList}
+          scrollEnabled={true}
+          scrollEventThrottle={16}
+          onContentSizeChange={() =>
+            flatRef.current?.scrollToEnd({ animated: false })
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubble-outline" size={48} color="#FFB4C1" />
+              <Text style={styles.emptyText}>No messages yet</Text>
+              <Text style={styles.emptySubtext}>Start the conversation!</Text>
+            </View>
+          }
         />
 
-        <View style={styles.inputContainer}>
-          <TouchableOpacity onPress={handleImagePick} style={styles.attachButton}>
-            <Ionicons name="image-outline" size={24} color="#FF3366" />
-          </TouchableOpacity>
-          <TextInput
-            value={text}
-            onChangeText={handleTyping}
-            style={styles.input}
-            placeholder="Message..."
-            placeholderTextColor="#999"
-            multiline
-          />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!text.trim() || sending}
-            style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={20} color="#fff" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        {/* Typing Indicator */}
+        {isTyping && (
+          <View style={styles.typingContainer}>
+            <View style={styles.typingBubble}>
+              <View style={styles.typingDot} />
+              <View style={styles.typingDot} />
+              <View style={styles.typingDot} />
+            </View>
+          </View>
+        )}
+
+        {/* Input Area */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.inputContainer}
+        >
+          <View style={styles.inputWrapper}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Ionicons name="add" size={24} color="#FF3366" />
+            </TouchableOpacity>
+            <TextInput
+              value={text}
+              onChangeText={handleTextChange}
+              placeholder="Message..."
+              placeholderTextColor="#D1D5DB"
+              style={styles.input}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              onPress={sendMessage}
+              disabled={!text.trim() || sending}
+              style={[
+                styles.sendButton,
+                (!text.trim() || sending) && styles.sendButtonDisabled,
+              ]}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="send" size={20} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+  },
+  safeArea: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
-    padding: 4,
+    padding: 8,
+    marginRight: 8,
   },
-  headerInfo: {
+  headerTitleContainer: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 8,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  recipientName: {
-    color: "#fff",
+  headerTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    marginLeft: 10,
+    fontWeight: '700',
+    color: '#1F2937',
   },
-  typingIndicator: {
-    color: "#fff",
-    fontSize: 12,
-    marginLeft: 10,
-    opacity: 0.9,
+  headerIconContainer: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  moreButton: {
-    padding: 4,
+  headerIcon: {
+    padding: 8,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+  messagesList: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
-  messageWrapper: {
+  messageRow: {
+    flexDirection: 'row',
     marginBottom: 12,
-    flexDirection: "row",
+    alignItems: 'flex-end',
   },
-  myMessageWrapper: {
-    justifyContent: "flex-end",
-  },
-  theirMessageWrapper: {
-    justifyContent: "flex-start",
+  ownMessageRow: {
+    justifyContent: 'flex-end',
   },
   messageBubble: {
-    maxWidth: "80%",
+    maxWidth: '75%',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: 18,
   },
-  myBubble: {
-    backgroundColor: "#FF3366",
-    borderBottomRightRadius: 4,
-  },
-  theirBubble: {
-    backgroundColor: "#fff",
+  otherBubble: {
+    backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 4,
   },
+  ownBubble: {
+    backgroundColor: '#FF3366',
+    borderBottomRightRadius: 4,
+  },
   messageText: {
-    fontSize: 16,
+    fontSize: 15,
+    color: '#1F2937',
     lineHeight: 22,
   },
-  myMessageText: {
-    color: "#fff",
-  },
-  theirMessageText: {
-    color: "#1F2937",
-  },
-  messageImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  imagePlaceholder: {
-    width: 200,
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
+  ownMessageText: {
+    color: '#FFFFFF',
   },
   messageFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 4,
+    justifyContent: 'flex-end',
   },
   messageTime: {
-    fontSize: 10,
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
-  myTime: {
-    color: "rgba(255,255,255,0.7)",
+  ownMessageTime: {
+    color: '#FFD4E5',
   },
-  theirTime: {
-    color: "#9CA3AF",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  typingContainer: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    alignItems: 'flex-start',
   },
-  attachButton: {
+  typingBubble: {
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  inputContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  iconButton: {
     padding: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 8,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#1F2937',
     maxHeight: 100,
-    fontSize: 16,
-    color: "#1F2937",
+    backgroundColor: '#FFFFFF',
   },
   sendButton: {
-    backgroundColor: "#FF3366",
+    backgroundColor: '#FF3366',
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF3366',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sendButtonDisabled: {
-    backgroundColor: "#D1D5DB",
+    backgroundColor: '#FFB4C1',
   },
 });

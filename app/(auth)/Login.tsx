@@ -7,6 +7,7 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { useSession } from '../../lib/useSession';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatError } from '../../lib/errorHandler';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -55,16 +56,33 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
+
       if (error) {
-        console.error('supabase signIn error', error);
-        return Alert.alert('Login failed', error.message);
+        console.error('Supabase signIn error', error);
+
+        // Provide user-friendly error messages
+        let userMessage = 'Login failed. Please try again.';
+        if (error.message.includes('Invalid login credentials')) {
+          userMessage = 'Invalid email or password. Please check and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          userMessage = 'Please verify your email before logging in.';
+        } else if (error.message.includes('Network')) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        }
+
+        return Alert.alert('Login Failed', userMessage);
       }
-      console.log('login success', data);
-      router.replace('/(main)/');
+
+      console.log('Login success');
+      router.replace('/(main)/Home');
     } catch (err) {
-      console.error('unexpected login error', err);
-      Alert.alert('Login failed', String(err));
+      console.error('Unexpected login error', err);
+      const formattedError = formatError(err);
+      Alert.alert('Login Error', formattedError.message);
     } finally {
       setLoading(false);
     }

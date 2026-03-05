@@ -19,7 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { usePermission } from "../lib/usePermissions";
+import * as FileSystem from "expo-file-system";
+import { useGalleryPermission } from "../../components/usePermissions";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CLOUDINARY_CLOUD_NAME = "dre7tjrrp";
@@ -328,7 +329,55 @@ export default function MyProfile() {
     }`.trim() ??
     "Your Name";
 
-  const age = computeAge(profile.birthday);
+  // Navigation buttons for verification, safety, and profile improvements
+  const NavigationButtons = () => (
+    <View style={{ marginVertical: 20, gap: 10 }}>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/verification/VerificationIntro")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="shield-checkmark" size={20} color="#7c3aed" />
+        <Text style={styles.navButtonText}>Go to Verification</Text>
+        <Ionicons name="chevron-forward" size={18} color="#7c3aed" />
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/safety/SafetyTips")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="warning" size={20} color="#ca8a04" />
+        <Text style={styles.navButtonText}>View Safety Tips</Text>
+        <Ionicons name="chevron-forward" size={18} color="#ca8a04" />
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => router.push("/(screens)/profile-improvements/ProfileBadges")}
+        style={styles.navButton}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="star" size={20} color="#2563eb" />
+        <Text style={styles.navButtonText}>See Profile Badges</Text>
+        <Ionicons name="chevron-forward" size={18} color="#2563eb" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const computeAge = (b?: string | null) => {
+    if (!b) return null;
+    const bd = new Date(b);
+    const now = new Date();
+    let age = now.getFullYear() - bd.getFullYear();
+    const m = now.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < bd.getDate())) age--;
+    return age;
+  };
+
+  const age = computeAge(profile?.birthday);
+
+  // Use the shared hook from components/usePermissions
+  // If you want to keep the local version, move the call to the top level
+  // import { useGalleryPermission } from '../../components/usePermissions';
+  const requestGalleryPermission = useGalleryPermission ? useGalleryPermission() : async () => true;
 
   return (
     <LinearGradient colors={["#FFF0F5", "#FFFFFF", "#FFF5F7"]} style={styles.container}>
@@ -462,9 +511,100 @@ export default function MyProfile() {
                 onPress={() => setShowGalleryOptions(true)}
                 disabled={uploading}
                 activeOpacity={0.8}
+                onPress={async () => {
+                  try {
+                    const hasPermission = await requestGalleryPermission();
+                    if (!hasPermission) return;
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [1, 1],
+                      quality: 0.8,
+                    });
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                      const uri = result.assets[0].uri;
+                      const fileExt = uri.split(".").pop() || "jpg";
+                      const filename = `gallery/${user?.id}/${Date.now()}.${fileExt}`;
+
+                      // Convert to base64 and upload to Supabase
+                      const base64 = await FileSystem.readAsStringAsync(uri, {
+                        encoding: "base64",
+                      });
+                      const binaryString = atob(base64);
+                      const len = binaryString.length;
+                      const bytes = new Uint8Array(len);
+                      for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                      }
+
+                      const { error: uploadError } = await supabase.storage
+                        .from("gallery")
+                        .upload(filename, bytes, {
+                          contentType: `image/${fileExt}`,
+                          upsert: false,
+                        });
+
+                      if (uploadError) throw uploadError;
+
+                      const { data: urlData } = supabase.storage
+                        .from("gallery")
+                        .getPublicUrl(filename);
+
+                      // Update Supabase
+                      const newGallery = [...(profile.gallery || []), urlData.publicUrl];
+                      const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                      if (error) throw error;
+                      setProfile({ ...profile, gallery: newGallery });
+                    }
+                  } catch (err: any) {
+                    Alert.alert('Upload failed', err.message || 'Could not upload image.');
+                  }
+                }}
               >
                 <Ionicons name="add-circle" size={24} color="#FF3366" />
               </TouchableOpacity>
+              {/* Gallery Images */}
+              {(profile.gallery || []).map((pic, index) => (
+                <View key={index} style={styles.galleryItem}>
+                  <Image source={{ uri: pic }} style={styles.galleryImage} />
+                  <TouchableOpacity
+                    style={styles.deleteIcon}
+                    onPress={async () => {
+                      Alert.alert('Delete Photo', 'Are you sure you want to remove this photo?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete', style: 'destructive', onPress: async () => {
+                            try {
+                              const imageUrl = profile.gallery?.[index];
+                              if (imageUrl) {
+                                // Extract the path from the public URL
+                                const urlParts = imageUrl.split('/storage/v1/object/public/gallery/')[1];
+                                if (urlParts) {
+                                  await supabase.storage.from('gallery').remove([urlParts]);
+                                }
+                              }
+
+                              const newGallery = (profile.gallery || []).filter((_, i) => i !== index);
+                              const { error } = await supabase.from('profiles').update({ gallery: newGallery }).eq('id', profile.id);
+                              if (!error) {
+                                setProfile({ ...profile, gallery: newGallery });
+                                Alert.alert('Success', 'Photo deleted successfully.');
+                              } else {
+                                Alert.alert('Error', 'Failed to delete photo from database.');
+                              }
+                            } catch (err: any) {
+                              Alert.alert('Error', err.message || 'Failed to delete photo.');
+                            }
+                          }
+                        }
+                      ]);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#FF3366" style={{ backgroundColor: 'white', borderRadius: 14 }} />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
 
             {profile.gallery && profile.gallery.length > 0 ? (
@@ -686,12 +826,12 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: "center",
-    marginTop: 16,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 28,
   },
   avatarContainer: {
     position: "relative",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   avatarImage: {
     width: 140,
@@ -732,10 +872,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   locationRow: {
     flexDirection: "row",
@@ -743,14 +883,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#6B7280",
     fontWeight: "500",
   },
   actionButtonsRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   actionButton: {
     flex: 1,
@@ -794,13 +934,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
   galleryHeaderContainer: {
     flexDirection: "row",
@@ -829,12 +969,12 @@ const styles = StyleSheet.create({
   sectionContent: {
     fontSize: 15,
     color: "#6B7280",
-    lineHeight: 22,
+    lineHeight: 24,
   },
   interestsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   interestChip: {
     backgroundColor: "#FFFFFF",
@@ -857,7 +997,7 @@ const styles = StyleSheet.create({
   galleryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   galleryItemWrapper: {
     position: "relative",
@@ -949,7 +1089,7 @@ const styles = StyleSheet.create({
     borderColor: "#FEE2E2",
     backgroundColor: "#FEF2F2",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 28,
   },
   logoutButtonText: {
     color: "#DC2626",
@@ -1023,5 +1163,25 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontWeight: "700",
     fontSize: 16,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  navButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });

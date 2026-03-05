@@ -38,6 +38,10 @@ module.exports = {
         darkText: '#1A1A1A',
         mutedText: '#6B7280',
         lightGray: '#F3F4F6',
+        // Dark mode colors
+        'dark-bg': '#0F172A',
+        'dark-surface': '#1E293B',
+        'dark-border': '#334155',
       },
       fontFamily: {
         sans: ['System', 'Poppins', 'sans-serif'],
@@ -51,6 +55,7 @@ module.exports = {
         'soft': '0 4px 20px rgba(0, 0, 0, 0.08)',
         'card': '0 8px 30px rgba(0, 0, 0, 0.12)',
         'button': '0 4px 15px rgba(255, 51, 102, 0.4)',
+        'dark-soft': '0 4px 20px rgba(0, 0, 0, 0.3)',
       },
     },
   },

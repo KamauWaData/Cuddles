@@ -1,9 +1,10 @@
 {
   "expo": {
-    "name": "cuddles-app",
+    "name": "Cuddles",
     "slug": "cuddles-app",
     "scheme": "cuddles",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,8 +14,29 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "url": "https://u.expo.dev/cuddles-app-prod",
+      "enabled": true,
+      "checkOnLaunch": "always",
+      "fallbackToCacheTimeout": 30000
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cuddlesapp.mobile",
+      "buildNumber": "1",
+      "deploymentTarget": "13.0",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to show you potential matches nearby and to schedule dates in your area.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photos to set your profile picture and add photos to your gallery.",
+        "NSCameraUsageDescription": "We need camera access to take photos for your profile.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to show you potential matches nearby.",
+        "UIRequiredDeviceCapabilities": [
+          "location-services"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,19 +44,61 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.cuddlesapp"
+      "package": "com.cuddlesapp.mobile",
+      "versionCode": 1,
+      "buildNumber": 1,
+      "minSdkVersion": 23,
+      "targetSdkVersion": 34,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ],
+      "usesCleartextTraffic": false
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "extra": {
-      "SUPABASE_URL": "https://hjoyrbecacivlfcnvnwc.supabase.co",
-      "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb3lyYmVjYWNpdmxmY252bndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4OTg3OTIsImV4cCI6MjA3NDQ3NDc5Mn0.8aFWbemi6hyOMVlJVuOSAs4mgHcnDL-KjeIEM0WAkG8",
-      "BYPASS_AUTH": true
+      "eas": {
+        "projectId": "cuddles-app-prod"
+      }
+    },
+    "eas": {
+      "build": {
+        "experimental": {
+          "ios": {
+            "appExtensions": []
+          }
+        },
+        "production": {
+          "android": {
+            "buildType": "apk",
+            "gradleCommand": ":app:bundleRelease"
+          },
+          "ios": {
+            "node": "18.13.0"
+          }
+        }
+      },
+      "submit": {
+        "production": {}
+      }
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ]
     ]
   }
 }

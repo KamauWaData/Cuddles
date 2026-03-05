@@ -1,0 +1,53 @@
+name: EAS Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build for'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create .env file for production build
+        run: |
+          echo "ENVIRONMENT=production" > .env
+          echo "SUPABASE_URL_PROD=${{ secrets.SUPABASE_URL_PROD }}" >> .env
+          echo "SUPABASE_ANON_KEY_PROD=${{ secrets.SUPABASE_ANON_KEY_PROD }}" >> .env
+          echo "BYPASS_AUTH=false" >> .env
+
+      - name: Build for Android (production)
+        if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all'
+        run: eas build --platform android --non-interactive
+
+      - name: Build for iOS (production)
+        if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all'
+        run: eas build --platform ios --non-interactive

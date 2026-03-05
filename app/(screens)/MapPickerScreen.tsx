@@ -1,9 +1,18 @@
-// /app/MapPickerScreen.js
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from "react-native";
-import MapView, { Marker, UrlTile, MapPressEvent } from "react-native-maps";
-import * as Location from "expo-location";
-import { useRouter } from "expo-router";
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+} from 'react-native';
+import MapView, { Marker, UrlTile, MapPressEvent } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Initial region defaults to a central point (e.g., Nairobi)
 const DEFAULT_REGION = {
@@ -19,9 +28,10 @@ interface LocationType {
 }
 
 export default function MapPickerScreen() {
-    const router = useRouter();
-    const [location, setLocation] = useState<LocationType | null>(null);
-    const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const mapRef = useRef<MapView>(null);
+  const [location, setLocation] = useState<LocationType | null>(null);
+  const [loading, setLoading] = useState(false);
 
     const getGpsLocation = async () => {
         setLoading(true);
@@ -66,73 +76,191 @@ export default function MapPickerScreen() {
         router.back();
     };
 
-    return (
-        <View style={styles.container}>
-            <MapView
-                style={styles.map}
-                initialRegion={DEFAULT_REGION}
-                onPress={onMapPress}
-                provider={undefined} // Use default, necessary for custom tiles
-            >
-                {/* OpenStreetMap Tiles via <UrlTile> */}
-                <UrlTile
-                    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
-                    flipY={false}
-                />
-                {location && <Marker coordinate={location} />}
-            </MapView>
-            
-            {/* Display selected coordinates */}
-            {location && (
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <SafeAreaView edges={['top']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pick Location</Text>
+        <View style={styles.headerSpacer} />
+      </SafeAreaView>
+
+      {/* Map */}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={DEFAULT_REGION}
+        onPress={onMapPress}
+        provider={undefined}
+      >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          flipY={false}
+        />
+        {location && <Marker coordinate={location} />}
+      </MapView>
+
+      {/* Bottom Card */}
+      <View style={styles.bottomCard}>
+        {location && (
+          <View style={styles.coordsCard}>
+            <View style={styles.coordsRow}>
+              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.coordsLabel}>Location Selected</Text>
                 <Text style={styles.coordsText}>
-                    Selected: Lat {location.latitude.toFixed(5)}, Lon {location.longitude.toFixed(5)}
+                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                 </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            onPress={getGpsLocation}
+            style={styles.gpsButton}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="locate" size={18} color="#FFFFFF" />
+                <Text style={styles.gpsButtonText}>Use My Location</Text>
+              </>
             )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-                onPress={getGpsLocation}
-                style={[styles.button, styles.gpsButton]}
-                disabled={loading}
+          <TouchableOpacity
+            onPress={handleSaveLocation}
+            style={[styles.saveButton, !location && { opacity: 0.5 }]}
+            disabled={!location}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FF3366', '#FF6B8A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.saveButtonGradient}
             >
-                {loading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>
-                        Use Current GPS Location
-                    </Text>
-                )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                onPress={handleSaveLocation}
-                style={[styles.button, styles.saveButton]}
-                disabled={!location}
-            >
-                <Text style={styles.buttonText}>
-                    Save Location
-                </Text>
-            </TouchableOpacity>
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              <Text style={styles.saveButtonText}>Confirm Location</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-    );
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    map: { flex: 1 },
-    coordsText: { textAlign: 'center', marginVertical: 10, fontSize: 14, color: '#333' },
-    button: {
-        marginHorizontal: 20,
-        paddingVertical: 15,
-        borderRadius: 12,
-        marginBottom: 10,
-    },
-    gpsButton: {
-        backgroundColor: "#2196F3", // Blue for GPS
-    },
-    saveButton: {
-        backgroundColor: "#4CAF50", // Green for Save
-        marginBottom: 20,
-    },
-    buttonText: { textAlign: "center", color: "white", fontWeight: "bold", fontSize: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  map: {
+    flex: 1,
+  },
+  bottomCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  coordsCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  coordsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coordsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  coordsText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065F46',
+    marginTop: 2,
+  },
+  buttonGroup: {
+    gap: 12,
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#2196F3',
+  },
+  gpsButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  saveButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#FF3366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });
