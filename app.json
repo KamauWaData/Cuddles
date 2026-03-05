@@ -59,8 +59,7 @@
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO"
       ],
-      "usesCleartextTraffic": false,
-      "googleServicesFile": "./google-services.json"
+      "usesCleartextTraffic": false
     },
     "web": {
       "favicon": "./assets/favicon.png",
